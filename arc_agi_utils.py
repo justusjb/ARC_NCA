@@ -7,12 +7,11 @@ import torch
 import math
 
 import vft
-from NCA import DEVICE
 
 DEVICE = vft.DEVICE
 
 
-def import_data(path: str, device: str="cuda:0") -> (tuple, tuple):
+def import_data(path: str, device: str=DEVICE) -> (tuple, tuple):
     inputs_tr, outputs_tr = [],[]
     inputs_te, outputs_te = [],[]
     for file_path in os.listdir(path):
@@ -125,7 +124,7 @@ def arc_to_nca_space(n: int, tensor: torch.Tensor, num_channels: int, gene_size 
 
         return torch.cat((R[None,...],G[None,...],B[None,...], alpha[None,...],padding*255, underlying), dim=0)/255
 
-def arc_to_nca_space_relative_encoding(n: int, tensor: torch.Tensor, num_channels: int, gene_size: int, device: str = "cuda:0",
+def arc_to_nca_space_relative_encoding(n: int, tensor: torch.Tensor, num_channels: int, gene_size: int, device: str = DEVICE,
                      mode="rgb", gene_location: list[int] = list[1], tensor2: torch.Tensor = None,
                      gene_location2: list[int] = list[2]) -> torch.Tensor:
     # n = tensor.unique().shape[0]
@@ -210,7 +209,7 @@ def nca_to_rgb_image(nca_out : torch.Tensor) -> np.ndarray:
     if len(nca_out.shape) == 3:
         nca_out = nca_out[None,...]
 
-    image = nca_out[0,:4,...].cpu().permute(1,2,0).numpy()
+    image = nca_out[0,:4,...].cuda().permute(1,2,0).numpy()
 
     return image
 

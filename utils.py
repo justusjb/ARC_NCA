@@ -7,7 +7,7 @@ import os
 import json
 
 def show_batch(results, channels=4, fig_num = 3):
-    x = results.cpu().clone().permute((0, 2, 3, 1)).detach().numpy()
+    x = results.cuda().clone().permute((0, 2, 3, 1)).detach().numpy()
     plt.figure(fig_num)
     num = results.shape[0]
     if num > 8:
