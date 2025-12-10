@@ -139,6 +139,14 @@ def main():
         for out in test_out
     ]
 
+    target_size = [20, 20]
+
+    print(f"  - Padding all grids to {target_size}")
+    nca_in = [aau.pad_to_size(target_size, n) for n in nca_in]
+    nca_out = [aau.pad_to_size(target_size, n) for n in nca_out]
+    test_nca_in = [aau.pad_to_size(target_size, n) for n in test_nca_in]
+    test_nca_out = [aau.pad_to_size(target_size, n) for n in test_nca_out]
+
     # Create NCA pools
     pool_x = [n.tile(1024, 1, 1, 1) for n in nca_in]
     pool_y = nca_out
