@@ -117,23 +117,23 @@ def main():
 
     # Convert numpy arrays to torch tensors (keep as integers for bitwise ops)
     nca_in = [
-        aau.arc_to_nca_space(max_colors, torch.from_numpy(inp).long(), CHANNELS, GENESIZE,
+        aau.arc_to_nca_space(max_colors, torch.from_numpy(inp).long().to('cuda'), CHANNELS, GENESIZE,
                             mode=mode, gene_location=genes, is_invis=1)
         for inp in train_in
     ]
     nca_out = [
-        aau.arc_to_nca_space(max_colors, torch.from_numpy(out).long(), CHANNELS, GENESIZE,
+        aau.arc_to_nca_space(max_colors, torch.from_numpy(out).long().to('cuda'), CHANNELS, GENESIZE,
                             mode=mode, gene_location=genes, is_invis=1)
         for out in train_out
     ]
 
     test_nca_in = [
-        aau.arc_to_nca_space(max_colors, torch.from_numpy(inp).long(), CHANNELS, GENESIZE,
+        aau.arc_to_nca_space(max_colors, torch.from_numpy(inp).long().to('cuda'), CHANNELS, GENESIZE,
                             mode=mode, gene_location=genes, is_invis=1)
         for inp in test_in
     ]
     test_nca_out = [
-        aau.arc_to_nca_space(max_colors, torch.from_numpy(out).long(), CHANNELS, GENESIZE,
+        aau.arc_to_nca_space(max_colors, torch.from_numpy(out).long().to('cuda'), CHANNELS, GENESIZE,
                             mode=mode, gene_location=genes, is_invis=1)
         for out in test_out
     ]
