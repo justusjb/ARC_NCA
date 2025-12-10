@@ -1,4 +1,8 @@
 import torch
+import vft
+
+DEVICE = vft.DEVICE
+
 
 def perchannel_conv(x, filters):
     b, ch, h, w = x.shape
@@ -8,11 +12,11 @@ def perchannel_conv(x, filters):
     return y.reshape(b, -1, h, w)
 
 
-ident = torch.tensor([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]], dtype=torch.float32, device="cuda:0")
-ones = torch.tensor([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]], dtype=torch.float32, device="cuda:0")
-sobel_x = torch.tensor([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]], dtype=torch.float32, device="cuda:0")
-lap = torch.tensor([[1.0, 1.0, 1.0], [1.0, -8, 2.0], [1.0, 1.0, 1.0]], dtype=torch.float32, device="cuda:0")
-gaus = torch.tensor([[1.0, 2.0, 1.0], [2.0, 4.0, 2.0], [1.0, 2.0, 1.0]], dtype=torch.float32, device="cuda:0")
+ident = torch.tensor([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]], dtype=torch.float32, device=DEVICE)
+ones = torch.tensor([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]], dtype=torch.float32, device=DEVICE)
+sobel_x = torch.tensor([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]], dtype=torch.float32, device=DEVICE)
+lap = torch.tensor([[1.0, 1.0, 1.0], [1.0, -8, 2.0], [1.0, 1.0, 1.0]], dtype=torch.float32, device=DEVICE)
+gaus = torch.tensor([[1.0, 2.0, 1.0], [2.0, 4.0, 2.0], [1.0, 2.0, 1.0]], dtype=torch.float32, device=DEVICE)
 
 
 def perception(x, mask_n=0):
@@ -20,7 +24,7 @@ def perception(x, mask_n=0):
     filters = torch.stack([sobel_x, sobel_x.T, lap])
     if mask_n != 0:
         n = x.shape[1]
-        padd = torch.zeros((x.shape[0], 3 * mask_n, x.shape[2], x.shape[3]), device="cuda:0")
+        padd = torch.zeros((x.shape[0], 3 * mask_n, x.shape[2], x.shape[3]), device=DEVICE)
         obs = perchannel_conv(x[:, 0:n - mask_n], filters)
         return torch.cat((x, obs, padd), dim=1)
     else:
@@ -56,7 +60,7 @@ class GeneCA(torch.nn.Module):
 
         y = self.w2(torch.relu(self.w1(y)))
         b, c, h, w = y.shape
-        update_mask = (torch.rand(b, 1, h, w, device="cuda:0") + update_rate).floor()
+        update_mask = (torch.rand(b, 1, h, w, device=DEVICE) + update_rate).floor()
         #xmp = torch.nn.functional.pad(x[:, None, 3, ...], pad=[1, 1, 1, 1], mode="circular")
         pre_life_mask = torch.nn.functional.max_pool2d(x[:, None, 3, ...], 3, 1, 1, ).cuda() > 0.1
         #alive_mask = x[:, None, 3, ...]
@@ -83,7 +87,7 @@ class GenePropCA(torch.nn.Module):
         y = reduced_perception(x, 0)
         y = self.w2(torch.relu(self.w1(y)))
         b, c, h, w = y.shape
-        update_mask = (torch.rand(b, 1, h, w, device="cuda:0") + update_rate).floor()
+        update_mask = (torch.rand(b, 1, h, w, device=DEVICE) + update_rate).floor()
         #xmp = torch.nn.functional.pad(x[:, None, 3, ...], pad=[1, 1, 1, 1], mode="circular")
         pre_life_mask = torch.nn.functional.max_pool2d(x[:, None, 3, ...], 3, 1, 1, ).cuda() > 0.1
 
@@ -132,7 +136,7 @@ class MixedCA(torch.nn.Module):
 
     y = self.w2(y)
     b, c, h, w = y.shape
-    update_mask = (torch.rand(b, 1, h, w, device="cuda:0") + update_rate).floor()
+    update_mask = (torch.rand(b, 1, h, w, device=DEVICE) + update_rate).floor()
     pre_life_mask = torch.nn.functional.max_pool2d(x[:,None,3,...], 3, 1, 1).cuda() > 0.1
 
 
@@ -179,7 +183,7 @@ class MixedGenePropCA(torch.nn.Module):
         y = self.dropout2(y)
         y = self.w2(y)
         b, c, h, w = y.shape
-        update_mask = (torch.rand(b, 1, h, w, device="cuda:0") + update_rate).floor()
+        update_mask = (torch.rand(b, 1, h, w, device=DEVICE) + update_rate).floor()
         xmp = torch.nn.functional.pad(x[:, None, 3, ...], pad=[1, 1, 1, 1], mode="circular")
         pre_life_mask = torch.nn.functional.max_pool2d(xmp, 3, 1, 0, ).cuda() > 0.1
 
@@ -290,7 +294,7 @@ class CA(torch.nn.Module):
       y = self.dropout2(y)
       y = self.w2(y)
       b, c, h, w = y.shape
-      update_mask = (torch.rand(b, 1, h, w, device="cuda:0") + update_rate).floor()
+      update_mask = (torch.rand(b, 1, h, w, device=DEVICE) + update_rate).floor()
       px = torch.nn.functional.pad(x, [1,1,1,1])
       #pre_life_mask = torch.nn.functional.max_pool2d(px[:, None, 3, ...], 3, 1, ).cuda() > 0.1
 

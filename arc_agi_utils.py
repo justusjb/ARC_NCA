@@ -6,6 +6,11 @@ import numpy as np
 import torch
 import math
 
+import vft
+from NCA import DEVICE
+
+DEVICE = vft.DEVICE
+
 
 def import_data(path: str, device: str="cuda:0") -> (tuple, tuple):
     inputs_tr, outputs_tr = [],[]
@@ -50,7 +55,7 @@ def max_n_colors(inputs: list[list[torch.Tensor]], outputs: list[list[torch.Tens
 
 
 
-def arc_to_nca_space(n: int , tensor: torch.Tensor, num_channels: int,gene_size : int, device : str = "cuda:0",
+def arc_to_nca_space(n: int, tensor: torch.Tensor, num_channels: int, gene_size : int, device : str = DEVICE,
                      mode = "rgb", gene_location: list[int] = list[1], tensor2: torch.Tensor = None, gene_location2 : list[int] = list[2], is_invis = 1) -> torch.Tensor:
     #n = tensor.unique().shape[0]
     if mode == "rgb":

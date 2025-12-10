@@ -1,4 +1,5 @@
-DEVICE = "cuda:0"
+import torch
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 CHANNELS = 50
 BATCH_SIZE = 8
 MASKING = 0
