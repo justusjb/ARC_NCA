@@ -10,6 +10,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
+import random
 
 # Import from Guichard repo (make sure these files are in your directory)
 from NCA import CA
@@ -187,7 +188,6 @@ def main():
             y = y.to(DEVICE)
 
         # Forward pass with random number of steps
-        import random
         n_steps = random.randrange(*STEPS_BETWEEN_ITERATIONS)
 
         for _ in range(n_steps):
@@ -208,27 +208,32 @@ def main():
         if iteration % 100 == 0:
             print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f}")
 
-    # Final evaluation on test case
-    print("\n[6/8] Evaluating on test case...")
+    # After training completes
+    print("\n[6/8] Generating test prediction...")
     nca.eval()
-    try:
-        with torch.no_grad():
-            # Note: Test is 20x20, train on same-sized example for fairness
-            # Find the 20x20 training example
-            test_x = test_nca_in[0].clone().to(DEVICE)
-            test_y = test_nca_out[0].to(DEVICE)
+    with torch.no_grad():
+        test_x = test_nca_in[0].clone().to(DEVICE)
 
-            # Run for fixed number of steps
-            for _ in range(64):
-                test_x = nca(test_x, 1.0)
+        # Run NCA
+        for _ in range(64):
+            test_x = nca(test_x, 1.0)
 
-            final_test_loss = ((test_y[:, :4, :, :]) -
-                              (test_x[:, :4, :, :])).pow(2).mean().item()
-            print(f"  Final test loss: {final_test_loss:.6f}")
-    except RuntimeError as e:
-        print(f"  Test evaluation failed: {e}")
-        print(f"  This may be due to size mismatch between train/test grids")
-        final_test_loss = None
+        # Convert to viewable image
+        test_pred_img = aau.nca_to_rgb_image(test_x)
+        test_true_img = aau.nca_to_rgb_image(test_nca_out[0])
+
+        # Plot side by side
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        ax1.imshow(test_pred_img)
+        ax1.set_title("NCA Prediction")
+        ax1.axis('off')
+
+        ax2.imshow(test_true_img)
+        ax2.set_title("Ground Truth")
+        ax2.axis('off')
+
+        plt.savefig(OUTPUT_DIR / "test_prediction.png", dpi=150, bbox_inches='tight')
+        print(f"  Saved: {OUTPUT_DIR / 'test_prediction.png'}")
 
     # Save model
     model_path = OUTPUT_DIR / "baseline_model.pth"
@@ -258,27 +263,11 @@ def main():
     print("="*60)
     print(f"Final training loss: {loss_log[-1]:.6f}")
 
-    if final_test_loss is not None:
-        print(f"Final test loss: {final_test_loss:.6f}")
-
-        if final_test_loss > 0.1:  # Arbitrary threshold
-            print("\n✓ OVERFITTING CONFIRMED: Model fails on test case")
-            print("  This replicates Xu et al. (2025) findings")
-        else:
-            print("\n✗ Unexpected: Model generalizes to test case")
-            print("  This differs from expected baseline behavior")
-    else:
-        print("Final test loss: Could not evaluate (size mismatch)")
-        print("\nNote: Test evaluation failed, likely due to NCA architecture")
-        print("      not handling variable grid sizes. Training loss shows")
-        print("      the model is learning, which is sufficient for baseline.")
-
     # Save logs
     results = {
         'task_id': TASK_ID,
         'iterations': TRAINING_ITERATIONS,
         'final_train_loss': loss_log[-1],
-        'final_test_loss': final_test_loss,
         'train_loss_history': loss_log,
     }
 
@@ -286,14 +275,6 @@ def main():
         json.dump(results, f, indent=2)
 
     print(f"\nResults saved to: {OUTPUT_DIR}")
-    print("\nNext steps:")
-    if final_test_loss is not None and final_test_loss > 0.1:
-        print("  1. Review training_curves.png to confirm overfitting pattern")
-        print("  2. Proceed to augmented training")
-    else:
-        print("  1. Training loss decreased successfully")
-        print("  2. May need to address test evaluation issues")
-        print("  3. Consider investigating NCA architecture for variable sizes")
 
 
 if __name__ == "__main__":
