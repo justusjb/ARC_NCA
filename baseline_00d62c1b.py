@@ -168,7 +168,7 @@ def write_frame(x, path, frame_number, height, width, chn, mode="rgb"):
         alpha = x[0, 10, :, :].unsqueeze(-1).cpu()  # [H, W, 1]
         rgb = rgb * alpha
 
-        image_np = rgb.numpy().clip(0, 1)
+        image_np = rgb.permute(1, 0, 2).numpy().clip(0, 1)
     elif mode == "rgb":
         image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
     else:
