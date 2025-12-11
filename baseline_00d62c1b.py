@@ -316,6 +316,8 @@ def main():
     optim = torch.optim.AdamW(nca.parameters(), lr=LEARNING_RATE)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
 
+    ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
+
     # Training
     print("\n[5/6] Training...")
     print(f"  - Iterations: {TRAINING_ITERATIONS}")
@@ -367,27 +369,31 @@ def main():
         optim.step()
         scheduler.step()
 
+        ema_nca.update_parameters(nca)
+
         loss_log.append(loss.item())
 
         # Print progress every 100 iterations
         if iteration % 100 == 0:
             print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f}")
-            nca.eval()
+            ema_nca.eval()
             with torch.no_grad():
                 test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
                 # Run NCA
-                for i in range(EVAL_STEPS+20):
-                    test_x = nca(test_x, 1.0)
+                for i in range(EVAL_STEPS+100):
+                    test_x = ema_nca(test_x, 1.0)
                     if i == EVAL_STEPS-1:
                         test_pred_img1 = aau.nca_to_rgb_image(test_x, mode=MODE)
+                    if i== EVAL_STEPS+19:
+                        test_pred_img2 = aau.nca_to_rgb_image(test_x, mode=MODE)
 
                 # Convert to viewable image
-                test_pred_img2 = aau.nca_to_rgb_image(test_x, mode=MODE)
+                test_pred_img3 = aau.nca_to_rgb_image(test_x, mode=MODE)
                 test_true_img = aau.nca_to_rgb_image(test_nca_out[0], mode=MODE)
 
                 # Plot side by side
-                fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+                fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(18, 8))
                 ax1.imshow(np.clip(test_pred_img1, 0, 1))
                 ax1.set_title("NCA Prediction")
                 ax1.axis('off')
@@ -396,20 +402,24 @@ def main():
                 ax2.set_title("NCA Prediction 20 steps later")
                 ax2.axis('off')
 
-                ax3.imshow(np.clip(test_true_img, 0, 1))
-                ax3.set_title("Ground Truth")
+                ax3.imshow(np.clip(test_pred_img3, 0, 1))
+                ax3.set_title("NCA Prediction 100 steps later")
                 ax3.axis('off')
+
+                ax4.imshow(np.clip(test_true_img, 0, 1))
+                ax4.set_title("Ground Truth")
+                ax4.axis('off')
 
                 plt.savefig(OUTPUT_DIR_PHOTOS / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
                 plt.close()
-            nca.train()
+            ema_nca.train()
 
     # After training completes
     print("\n[6/8] Generating test prediction...")
 
-    nca.eval()
+    ema_nca.eval()
     with torch.no_grad():
-        fig = visualize_results(nca, train_in, train_out, test_in, test_out,
+        fig = visualize_results(ema_nca, train_in, train_out, test_in, test_out,
                                 nca_in, nca_out, test_nca_in, test_nca_out, mode=MODE)
         plt.savefig(OUTPUT_DIR / "all_predictions.png", dpi=150, bbox_inches='tight')
         print(f"  Saved: {OUTPUT_DIR / 'all_predictions.png'}")
@@ -420,7 +430,7 @@ def main():
 
         # Run NCA
         for i in range(EVAL_STEPS+1000):
-            test_x = nca(test_x, 1.0)
+            test_x = ema_nca(test_x, 1.0)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE)
 
@@ -453,7 +463,7 @@ def main():
 
     # Save model
     model_path = OUTPUT_DIR / "baseline_model.pth"
-    torch.save(nca.state_dict(), model_path)
+    torch.save(ema_nca.state_dict(), model_path)
     print(f"\n[7/8] Model saved: {model_path}")
 
     # Plot training curves
