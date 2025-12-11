@@ -91,7 +91,8 @@ def write_frame(x, path, frame_number, height, width, chn):
 
 def make_video(path, total_frames, height, width, vid_num = "r"):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(path+'/' +vid_num+'.mp4', fourcc, 15.0, (height, width))
+    output_path = Path(path) / f'{vid_num}.mp4'
+    out = cv2.VideoWriter(output_path, fourcc, 15.0, (height, width))
     for frame_number in range(total_frames):
        frame_path = path+f"/frame_{frame_number}.png"
        frame = cv2.imread(frame_path)
