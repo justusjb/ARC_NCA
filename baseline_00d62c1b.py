@@ -218,7 +218,7 @@ def main():
 
     # Generating data augmentations
 
-    use_augmentation = False
+    use_augmentation = True
     use_flips = False
 
     if use_augmentation:
