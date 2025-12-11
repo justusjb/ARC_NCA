@@ -27,7 +27,7 @@ GENESIZE = vft.GENESIZE
 
 # Task-specific settings
 TASK_ID = "00d62c1b"
-TRAINING_ITERATIONS = 5000
+TRAINING_ITERATIONS = 3000
 LEARNING_RATE = 5e-3 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
@@ -59,6 +59,7 @@ ARC_COLOR_MAP_NP = np.array([
 
 ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 
+DAMAGE = False
 DAMAGE_START_ITER = 1000  # Start damage after 1000 iterations
 DAMAGE_RAMP_ITERS = 1000  # Gradually increase over 1000 iterations
 
@@ -390,23 +391,24 @@ def main():
 
         total_loss=0
 
-        damage_step = -1
-
-        if iteration >= DAMAGE_START_ITER:
-            # Calculate damage probability (ramps from 0 to 0.3)
-            progress = min(1.0, (iteration - DAMAGE_START_ITER) / DAMAGE_RAMP_ITERS)
-            damage_prob = 0.3 * progress
-            if random.random() < damage_prob:
-                damage_step = random.randint(10, max(11, n_steps - 5))
+        if DAMAGE:
+            damage_step = -1
+            if iteration >= DAMAGE_START_ITER:
+                # Calculate damage probability (ramps from 0 to 0.3)
+                progress = min(1.0, (iteration - DAMAGE_START_ITER) / DAMAGE_RAMP_ITERS)
+                damage_prob = 0.3 * progress
+                if random.random() < damage_prob:
+                    damage_step = random.randint(10, max(11, n_steps - 5))
 
         for i in range(n_steps):
 
-            if i == damage_step:
-                # Damage only 1-2 samples, not all
-                n_to_damage = random.randint(5, BATCH_SIZE//2)
-                h, w = x.shape[2:]
-                damage_masks = make_circle_masks(n_to_damage, h, w, DEVICE).unsqueeze(1)
-                x[-n_to_damage:] *= damage_masks
+            if DAMAGE:
+                if i == damage_step:
+                    # Damage only 1-2 samples, not all
+                    n_to_damage = random.randint(5, BATCH_SIZE//2)
+                    h, w = x.shape[2:]
+                    damage_masks = make_circle_masks(n_to_damage, h, w, DEVICE).unsqueeze(1)
+                    x[-n_to_damage:] *= damage_masks
 
             x = nca(x, 0.75)
 
