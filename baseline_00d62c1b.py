@@ -59,6 +59,9 @@ ARC_COLOR_MAP_NP = np.array([
 
 ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 
+DAMAGE_START_ITER = 1000  # Start damage after 1000 iterations
+DAMAGE_RAMP_ITERS = 1000  # Gradually increase over 1000 iterations
+
 
 def load_single_task(task_id):
     """Load a single ARC task by ID
@@ -388,8 +391,13 @@ def main():
         total_loss=0
 
         damage_step = -1
-        if random.random() < 0.3:  # Only ~5% of all training iterations
-            damage_step = random.randint(10, max(11, n_steps - 5))
+
+        if iteration >= DAMAGE_START_ITER:
+            # Calculate damage probability (ramps from 0 to 0.3)
+            progress = min(1.0, (iteration - DAMAGE_START_ITER) / DAMAGE_RAMP_ITERS)
+            damage_prob = 0.3 * progress
+            if random.random() < damage_prob:
+                damage_step = random.randint(10, max(11, n_steps - 5))
 
         for i in range(n_steps):
 
