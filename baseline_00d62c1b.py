@@ -90,22 +90,6 @@ def visualize_arc_task(inputs, outputs, title="ARC Task"):
 
 def write_frame(x, path, frame_number, height, width, chn):
     image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
-
-    # Convert to uint8 format for OpenCV operations
-    image_uint8 = (image_np * 255).astype('uint8').copy()
-
-    # Add frame number text
-    cv2.putText(image_uint8,
-                f'Frame {frame_number}',
-                (10, 30),  # Position (x, y) - top-left corner
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1.0,  # Font scale
-                (255, 255, 255),  # Color (white in RGB)
-                2,  # Thickness
-                cv2.LINE_AA)  # Anti-aliased line
-
-    # Convert back to float for plt.imsave
-    image_np = image_uint8.astype('float32') / 255.0
     plt.imsave(f"{path}/frame_{frame_number}.png", image_np)
 
 
@@ -121,6 +105,21 @@ def make_video(path, total_frames, height, width, vid_num = "r"):
        frame = cv2.rotate(frame,cv2.ROTATE_90_COUNTERCLOCKWISE)
        frame = cv2.resize(frame, (height, width), interpolation=cv2.INTER_NEAREST)
 
+       # Add text after upscaling - top right corner
+       text = f'Frame {frame_number}'
+       text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+       text_x = width - text_size[0] - 3  # 3 pixels from right edge
+       text_y = text_size[1] + 3  # 3 pixels from top
+
+       cv2.putText(frame,
+                   text,
+                   (text_x, text_y),
+                   cv2.FONT_HERSHEY_SIMPLEX,
+                   0.3,  # Smaller font scale
+                   (255, 255, 255),
+                   1,  # Thinner
+                   cv2.LINE_AA)
+
        out.write(frame)
     out.release()
 
@@ -135,7 +134,7 @@ def main():
     train_in, train_out, test_in, test_out = load_single_task(TASK_ID)
 
     # Generating data augmentations
-    """
+    #"""
     train_in = [
         np.rot90(arr, k=k).copy()
         for arr in train_in
@@ -147,7 +146,7 @@ def main():
         for arr in train_out
         for k in range(4)
     ]
-    """
+    #"""
 
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
