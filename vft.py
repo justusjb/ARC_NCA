@@ -1,7 +1,7 @@
 import torch
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 CHANNELS = 50
-BATCH_SIZE = 30
+BATCH_SIZE = 64
 MASKING = 0
 GENESIZE = 25
 GENE_HIDDEN_N = 132

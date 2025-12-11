@@ -31,7 +31,7 @@ TRAINING_ITERATIONS = 3000
 LEARNING_RATE = 4e-4 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
-EVAL_STEPS = 50
+EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
 
 # Paths
 DATA_ROOT = Path("ArcData/data")
@@ -135,15 +135,18 @@ def main():
 
     # Generating data augmentations
     #"""
+
     train_in = [
-        np.rot90(arr, k=k).copy()
+        np.rot90(flipped_arr, k=k).copy()
         for arr in train_in
+        for flipped_arr in [arr, np.flip(arr, axis=1)]
         for k in range(4)
     ]
 
     train_out = [
-        np.rot90(arr, k=k).copy()
+        np.rot90(flipped_arr, k=k).copy()
         for arr in train_out
+        for flipped_arr in [arr, np.flip(arr, axis=1)]
         for k in range(4)
     ]
     #"""
