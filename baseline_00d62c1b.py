@@ -383,7 +383,7 @@ def main():
 
                 # Run NCA
                 for i in range(EVAL_STEPS+100):
-                    test_x = ema_nca.module(test_x, 0.75)
+                    test_x = ema_nca.module(test_x, 0.5)
                     if i == EVAL_STEPS-1:
                         test_pred_img1 = aau.nca_to_rgb_image(test_x, mode=MODE)
                     if i== EVAL_STEPS+19:
@@ -439,7 +439,7 @@ def main():
 
         # Run NCA
         for i in range(EVAL_STEPS+1000):
-            test_x = ema_nca.module(test_x, 0.75)
+            test_x = ema_nca.module(test_x, 0.5)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE)
 
