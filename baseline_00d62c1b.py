@@ -204,6 +204,11 @@ def main():
         # Compute loss (MSE on first 4 channels - RGB + alpha)
         loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
 
+        loss.backward()
+        for p in nca.parameters():
+            p.grad /= (p.grad.norm() + 1e-8)
+        optim.step()
+
         # Backward pass
         optim.zero_grad()
         loss.backward()
