@@ -261,12 +261,17 @@ def main():
         # Forward pass with random number of steps
         n_steps = random.randrange(*STEPS_BETWEEN_ITERATIONS)
 
-        for _ in range(n_steps):
+        total_loss=0
+        for i in range(n_steps):
             x = nca(x, 0.5)
+            if i in [n_steps-6,n_steps-11, n_steps-1]:
+                step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
+                total_loss = total_loss + step_loss
 
         # Compute loss (MSE on first 4 channels - RGB + alpha)
-        loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
+        # total_loss+= ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
 
+        loss = total_loss
         # Backward pass with gradient normalization
         optim.zero_grad()
         loss.backward()
@@ -287,22 +292,28 @@ def main():
                 test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
                 # Run NCA
-                for _ in range(EVAL_STEPS):
+                for i in range(EVAL_STEPS+20):
                     test_x = nca(test_x, 1.0)
+                    if i == EVAL_STEPS-1:
+                        test_pred_img1 = aau.nca_to_rgb_image(test_x)
 
                 # Convert to viewable image
-                test_pred_img = aau.nca_to_rgb_image(test_x)
+                test_pred_img2 = aau.nca_to_rgb_image(test_x)
                 test_true_img = aau.nca_to_rgb_image(test_nca_out[0])
 
                 # Plot side by side
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-                ax1.imshow(test_pred_img)
+                fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+                ax1.imshow(test_pred_img1)
                 ax1.set_title("NCA Prediction")
                 ax1.axis('off')
 
-                ax2.imshow(test_true_img)
-                ax2.set_title("Ground Truth")
+                ax2.imshow(test_pred_img2)
+                ax2.set_title("NCA Prediction 20 steps later")
                 ax2.axis('off')
+
+                ax3.imshow(test_true_img)
+                ax3.set_title("Ground Truth")
+                ax3.axis('off')
 
                 plt.savefig(OUTPUT_DIR_PHOTOS / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
                 plt.close()
