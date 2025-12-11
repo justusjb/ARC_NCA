@@ -106,7 +106,7 @@ def make_video(path, total_frames, height, width, vid_num = "r"):
        frame = cv2.resize(frame, (height, width), interpolation=cv2.INTER_NEAREST)
 
        # Add text after upscaling - top right corner
-       text = f'Frame {frame_number}'
+       text = f'step {frame_number+1}'
        text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
        text_x = width - text_size[0] - 3  # 3 pixels from right edge
        text_y = text_size[1] + 3  # 3 pixels from top
@@ -134,7 +134,7 @@ def main():
     train_in, train_out, test_in, test_out = load_single_task(TASK_ID)
 
     # Generating data augmentations
-    #"""
+    """
     train_in = [
         np.rot90(arr, k=k).copy()
         for arr in train_in
@@ -146,7 +146,7 @@ def main():
         for arr in train_out
         for k in range(4)
     ]
-    #"""
+    """
 
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
