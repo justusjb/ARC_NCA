@@ -363,10 +363,7 @@ def main():
         # Backward pass with gradient normalization
         optim.zero_grad()
         loss.backward()
-        with torch.no_grad():
-            for p in nca.parameters():
-                if p.grad is not None:
-                    p.grad /= (p.grad.norm() + 1e-8)
+        torch.nn.utils.clip_grad_norm_(nca.parameters(), max_norm=1.0)
         optim.step()
         scheduler.step()
 
