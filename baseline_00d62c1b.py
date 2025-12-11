@@ -12,6 +12,7 @@ import numpy as np
 from pathlib import Path
 import random
 import cv2
+import shutil
 
 from NCA import CA
 import arc_agi_utils as aau
@@ -27,10 +28,10 @@ GENESIZE = vft.GENESIZE
 # Task-specific settings
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 3000
-LEARNING_RATE = 3e-4 # lowered from 1e-3
-STEPS_BETWEEN_ITERATIONS = (10, 11)  # Random range, originally 32,64, now always 10.
+LEARNING_RATE = 4e-4 # lowered from 1e-3
+STEPS_BETWEEN_ITERATIONS = (15, 21)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
-EVAL_STEPS =64
+EVAL_STEPS = 20
 
 # Paths
 DATA_ROOT = Path("ArcData/data")
@@ -87,6 +88,22 @@ def visualize_arc_task(inputs, outputs, title="ARC Task"):
 
 def write_frame(x, path, frame_number, height, width, chn):
     image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
+
+    # Convert to uint8 format for OpenCV operations
+    image_uint8 = (image_np * 255).astype('uint8')
+
+    # Add frame number text
+    cv2.putText(image_uint8,
+                f'Frame {frame_number}',
+                (10, 30),  # Position (x, y) - top-left corner
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,  # Font scale
+                (255, 255, 255),  # Color (white in RGB)
+                2,  # Thickness
+                cv2.LINE_AA)  # Anti-aliased line
+
+    # Convert back to float for plt.imsave
+    image_np = image_uint8.astype('float32') / 255.0
     plt.imsave(f"{path}/frame_{frame_number}.png", image_np)
 
 
@@ -282,7 +299,7 @@ def main():
                 ax2.set_title("Ground Truth")
                 ax2.axis('off')
 
-                plt.savefig(OUTPUT_DIR / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
+                plt.savefig(OUTPUT_DIR / "photos" / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
                 plt.close()
             nca.train()
 
@@ -293,12 +310,12 @@ def main():
         test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
-        for i in range(EVAL_STEPS):
+        for i in range(EVAL_STEPS+20):
             test_x = nca(test_x, 1.0)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS)
 
-        make_video(path_video, EVAL_STEPS, 10 * x.shape[3], 10 * x.shape[2],
+        make_video(path_video, EVAL_STEPS+20, 10 * x.shape[3], 10 * x.shape[2],
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
 
         # Convert to viewable image
@@ -315,9 +332,15 @@ def main():
         ax2.set_title("Ground Truth")
         ax2.axis('off')
 
-        plt.savefig(OUTPUT_DIR / "test_prediction_final.png", dpi=150, bbox_inches='tight')
+        plt.savefig(OUTPUT_DIR / "photos" / "test_prediction_final.png", dpi=150, bbox_inches='tight')
         plt.close()
-        print(f"  Saved: {OUTPUT_DIR / 'test_prediction_final.png'}")
+        print(f"  Saved: {OUTPUT_DIR  / 'photos' / 'test_prediction_final.png'}")
+
+    shutil.make_archive(
+        str(OUTPUT_DIR / "photos"),  # Output path without extension
+        'zip',  # Archive format
+        str(OUTPUT_DIR / "photos")  # Directory to zip
+    )
 
     # Save model
     model_path = OUTPUT_DIR / "baseline_model.pth"
