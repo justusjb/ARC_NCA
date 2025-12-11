@@ -309,15 +309,15 @@ def main():
 
                 # Plot side by side
                 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
-                ax1.imshow(test_pred_img1)
+                ax1.imshow(np.clip(test_pred_img1, 0, 1))
                 ax1.set_title("NCA Prediction")
                 ax1.axis('off')
 
-                ax2.imshow(test_pred_img2)
+                ax2.imshow(np.clip(test_pred_img2, 0, 1))
                 ax2.set_title("NCA Prediction 20 steps later")
                 ax2.axis('off')
 
-                ax3.imshow(test_true_img)
+                ax3.imshow(np.clip(test_true_img, 0, 1))
                 ax3.set_title("Ground Truth")
                 ax3.axis('off')
 
@@ -346,11 +346,11 @@ def main():
 
         # Plot side by side
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        ax1.imshow(test_pred_img)
+        ax1.imshow(np.clip(test_pred_img, 0, 1))
         ax1.set_title("NCA Prediction")
         ax1.axis('off')
 
-        ax2.imshow(test_true_img)
+        ax2.imshow(np.clip(test_true_img,0,1))
         ax2.set_title("Ground Truth")
         ax2.axis('off')
 
