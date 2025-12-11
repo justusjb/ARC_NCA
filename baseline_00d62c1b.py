@@ -89,6 +89,22 @@ def main():
     # Load task data
     print(f"\n[1/6] Loading task {TASK_ID}...")
     train_in, train_out, test_in, test_out = load_single_task(TASK_ID)
+
+    # Generating data augmentations
+
+    train_in = [
+        np.rot90(arr, k=k)
+        for arr in train_in
+        for k in range(4)
+    ]
+
+    train_out = [
+        np.rot90(arr, k=k)
+        for arr in train_out
+        for k in range(4)
+    ]
+
+
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
     print(f"  - Training grid sizes: {[inp.shape for inp in train_in]}")
@@ -269,6 +285,7 @@ def main():
         ax2.axis('off')
 
         plt.savefig(OUTPUT_DIR / "test_prediction_final.png", dpi=150, bbox_inches='tight')
+        plt.close()
         print(f"  Saved: {OUTPUT_DIR / 'test_prediction_final.png'}")
 
     # Save model
