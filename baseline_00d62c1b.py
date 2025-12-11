@@ -38,6 +38,8 @@ DATA_ROOT = Path("ArcData/data")
 TRAINING_PATH = DATA_ROOT / "training"
 OUTPUT_DIR = Path("results") / TASK_ID
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR_PHOTOS = OUTPUT_DIR / "photos"
+OUTPUT_DIR_PHOTOS.mkdir(parents=True, exist_ok=True)
 path_video = Path("results") / TASK_ID / "video"
 path_video.mkdir(parents=True, exist_ok=True)
 
@@ -299,7 +301,7 @@ def main():
                 ax2.set_title("Ground Truth")
                 ax2.axis('off')
 
-                plt.savefig(OUTPUT_DIR / "photos" / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
+                plt.savefig(OUTPUT_DIR_PHOTOS / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
                 plt.close()
             nca.train()
 
@@ -332,14 +334,14 @@ def main():
         ax2.set_title("Ground Truth")
         ax2.axis('off')
 
-        plt.savefig(OUTPUT_DIR / "photos" / "test_prediction_final.png", dpi=150, bbox_inches='tight')
+        plt.savefig(OUTPUT_DIR_PHOTOS / "test_prediction_final.png", dpi=150, bbox_inches='tight')
         plt.close()
-        print(f"  Saved: {OUTPUT_DIR  / 'photos' / 'test_prediction_final.png'}")
+        print(f"  Saved: {OUTPUT_DIR_PHOTOS / 'test_prediction_final.png'}")
 
     shutil.make_archive(
-        str(OUTPUT_DIR / "photos"),  # Output path without extension
+        str(OUTPUT_DIR_PHOTOS),  # Output path without extension
         'zip',  # Archive format
-        str(OUTPUT_DIR / "photos")  # Directory to zip
+        str(OUTPUT_DIR_PHOTOS)  # Directory to zip
     )
 
     # Save model
