@@ -209,7 +209,7 @@ def nca_to_rgb_image(nca_out : torch.Tensor) -> np.ndarray:
     if len(nca_out.shape) == 3:
         nca_out = nca_out[None,...]
 
-    image = nca_out[0,:4,...].cuda().permute(1,2,0).numpy()
+    image = nca_out[0,:4,...].cpu().permute(1,2,0).numpy()
 
     return image
 
