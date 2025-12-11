@@ -28,7 +28,7 @@ GENESIZE = vft.GENESIZE
 # Task-specific settings
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 5000
-LEARNING_RATE = 5e-5 # lowered from 1e-3
+LEARNING_RATE = 1e-4 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
@@ -110,7 +110,7 @@ def arc_to_rgb_display(arc_grid):
 
 
 def visualize_results(nca, train_in, train_out, test_in, test_out,
-                      nca_train_in, nca_train_out, nca_test_in, nca_test_out, mode="rgb"):
+                      nca_train_in, nca_train_out, nca_test_in, nca_test_out, eval_steps=EVAL_STEPS, mode="rgb"):
     """Visualize training and test predictions vs ground truth"""
 
     nca.eval()
@@ -119,13 +119,13 @@ def visualize_results(nca, train_in, train_out, test_in, test_out,
         train_preds = []
         for x in nca_train_in:
             x_pred = x.unsqueeze(0).clone().to(DEVICE)
-            for _ in range(64):
+            for _ in range(eval_steps):
                 x_pred = nca(x_pred, 1.0)
             train_preds.append(x_pred.squeeze(0))
 
         # Generate test prediction
         test_x = nca_test_in[0].unsqueeze(0).clone().to(DEVICE)
-        for _ in range(64):
+        for _ in range(eval_steps):
             test_x = nca(test_x, 1.0)
         test_pred = test_x.squeeze(0)
 
