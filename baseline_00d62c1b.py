@@ -27,7 +27,7 @@ GENESIZE = vft.GENESIZE
 
 # Task-specific settings
 TASK_ID = "00d62c1b"
-TRAINING_ITERATIONS = 5000
+TRAINING_ITERATIONS = 3000
 LEARNING_RATE = 1e-3 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
@@ -85,6 +85,54 @@ def visualize_arc_task(inputs, outputs, title="ARC Task"):
         axes[i][1].axis('off')
 
     plt.suptitle(title)
+    plt.tight_layout()
+    return fig
+
+
+def visualize_results(nca, train_in, train_out, test_in, test_out,
+                      nca_train_in, nca_train_out, nca_test_in, nca_test_out, mode="rgb"):
+    """Visualize training and test predictions vs ground truth"""
+
+    nca.eval()
+    with torch.no_grad():
+        # Generate predictions for all training examples
+        train_preds = []
+        for x in nca_train_in:
+            x_pred = x.unsqueeze(0).clone().to(DEVICE)
+            for _ in range(64):
+                x_pred = nca(x_pred, 1.0)
+            train_preds.append(x_pred.squeeze(0))
+
+        # Generate test prediction
+        test_x = nca_test_in[0].unsqueeze(0).clone().to(DEVICE)
+        for _ in range(64):
+            test_x = nca(test_x, 1.0)
+        test_pred = test_x.squeeze(0)
+
+    # Convert to images
+    train_pred_imgs = [aau.nca_to_rgb_image(p, mode=mode) for p in train_preds]
+
+    # Plot everything
+    n_train = len(train_in)
+    fig, axes = plt.subplots(n_train, 3, figsize=(12, 4 * n_train))
+
+    # Training examples
+    for i in range(n_train):
+        # Input (raw ARC)
+        axes[i, 0].imshow(train_in[i], cmap='tab10', vmin=0, vmax=9)
+        axes[i, 0].set_title(f"Train {i + 1} Input")
+        axes[i, 0].axis('off')
+
+        # Prediction
+        axes[i, 1].imshow(np.clip(train_pred_imgs[i], 0, 1))
+        axes[i, 1].set_title(f"Train {i + 1} Prediction")
+        axes[i, 1].axis('off')
+
+        # Ground truth (raw ARC)
+        axes[i, 2].imshow(train_out[i], cmap='tab10', vmin=0, vmax=9)
+        axes[i, 2].set_title(f"Train {i + 1} Truth")
+        axes[i, 2].axis('off')
+
     plt.tight_layout()
     return fig
 
@@ -327,8 +375,16 @@ def main():
 
     # After training completes
     print("\n[6/8] Generating test prediction...")
+
     nca.eval()
     with torch.no_grad():
+        fig = visualize_results(nca, train_in, train_out, test_in, test_out,
+                                nca_in, nca_out, test_nca_in, test_nca_out, mode=MODE)
+        plt.savefig(OUTPUT_DIR / "all_predictions.png", dpi=150, bbox_inches='tight')
+        print(f"  Saved: {OUTPUT_DIR / 'all_predictions.png'}")
+        plt.close('all')
+
+
         test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
