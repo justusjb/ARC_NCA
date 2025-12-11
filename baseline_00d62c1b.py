@@ -93,13 +93,13 @@ def main():
     # Generating data augmentations
 
     train_in = [
-        np.rot90(arr, k=k)
+        np.rot90(arr, k=k).copy()
         for arr in train_in
         for k in range(4)
     ]
 
     train_out = [
-        np.rot90(arr, k=k)
+        np.rot90(arr, k=k).copy()
         for arr in train_out
         for k in range(4)
     ]
