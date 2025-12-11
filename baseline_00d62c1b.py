@@ -28,8 +28,8 @@ GENESIZE = vft.GENESIZE
 # Task-specific settings
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 3000
-LEARNING_RATE = 8e-4 # lowered from 1e-3
-STEPS_BETWEEN_ITERATIONS = (35, 51)  # Random range, originally 32,64, now always 10.
+LEARNING_RATE = 4e-4 # lowered from 1e-3
+STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = 50
 
@@ -134,7 +134,7 @@ def main():
     train_in, train_out, test_in, test_out = load_single_task(TASK_ID)
 
     # Generating data augmentations
-    """
+    #"""
     train_in = [
         np.rot90(arr, k=k).copy()
         for arr in train_in
@@ -146,7 +146,7 @@ def main():
         for arr in train_out
         for k in range(4)
     ]
-    """
+    #"""
 
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
