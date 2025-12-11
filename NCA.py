@@ -276,7 +276,7 @@ class CA(torch.nn.Module):
   def __init__(self, chn=12, hidden_n=96, mask_n = 0):
     super().__init__()
     self.chn = chn
-    self.perc = torch.nn.Conv2d(chn, 8 * chn, 5, padding=1, padding_mode="zeros", bias=False)
+    self.perc = torch.nn.Conv2d(chn, 8 * chn, 5, padding=2, padding_mode="zeros", bias=False)
     self.dropout = torch.nn.Dropout2d(p=0.4)
     self.dropout2 = torch.nn.Dropout2d(p=0.4)
     self.w1 = torch.nn.Conv2d(9*chn, hidden_n, 1)
