@@ -27,7 +27,7 @@ GENESIZE = vft.GENESIZE
 
 # Task-specific settings
 TASK_ID = "00d62c1b"
-TRAINING_ITERATIONS = 3000
+TRAINING_ITERATIONS = 5000
 LEARNING_RATE = 1e-3 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
@@ -137,8 +137,35 @@ def visualize_results(nca, train_in, train_out, test_in, test_out,
     return fig
 
 
-def write_frame(x, path, frame_number, height, width, chn):
-    image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
+def write_frame(x, path, frame_number, height, width, chn, mode="rgb"):
+    if mode == "onehot":
+        color_map = torch.tensor([
+            [0, 0, 0],  # 0: black
+            [0, 116, 217],  # 1: blue
+            [255, 65, 54],  # 2: red
+            [46, 204, 64],  # 3: green
+            [255, 220, 0],  # 4: yellow
+            [170, 170, 170],  # 5: gray
+            [240, 18, 190],  # 6: magenta
+            [255, 133, 27],  # 7: orange
+            [127, 219, 255],  # 8: light blue
+            [135, 60, 0]  # 9: brown
+        ], dtype=torch.float32) / 255.0
+
+        # x shape: [B, C, H, W]
+        # Argmax over one-hot channels (0-9)
+        color_indices = torch.argmax(x[0, :10, :, :], dim=0)  # [H, W]
+        rgb = color_map[color_indices]  # [H, W, 3]
+
+        # Apply alpha mask
+        alpha = x[0, 10, :, :].unsqueeze(-1)  # [H, W, 1]
+        rgb = rgb * alpha
+
+        image_np = rgb.cpu().numpy().clip(0, 1)
+    elif mode == "rgb":
+        image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
+    else:
+        raise NotImplementedError("Only rgb and onehot are supported")
     plt.imsave(f"{path}/frame_{frame_number}.png", image_np)
 
 
@@ -391,7 +418,7 @@ def main():
         for i in range(EVAL_STEPS+100):
             test_x = nca(test_x, 1.0)
             x = test_x.detach()
-            write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS)
+            write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE)
 
         make_video(path_video, EVAL_STEPS+100, 10 * x.shape[3], 10 * x.shape[2],
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
