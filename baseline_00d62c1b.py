@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 import random
+import cv2
 
-# Import from Guichard repo (make sure these files are in your directory)
 from NCA import CA
 import arc_agi_utils as aau
 import utils
@@ -27,14 +27,17 @@ GENESIZE = vft.GENESIZE
 # Task-specific settings
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 3000
-LEARNING_RATE = 1e-3
-STEPS_BETWEEN_ITERATIONS = (32, 64)  # Random range
+LEARNING_RATE = 3e-4 # lowered from 1e-3
+STEPS_BETWEEN_ITERATIONS = (10, 11)  # Random range, originally 32,64, now always 10.
+# Curiously, this originally always made 64 steps at eval but at most 63 when training
 
 # Paths
 DATA_ROOT = Path("ArcData/data")
 TRAINING_PATH = DATA_ROOT / "training"
 OUTPUT_DIR = Path("results") / TASK_ID
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+path_video = Path("results") / TASK_ID / "video"
+path_video.mkdir(parents=True, exist_ok=True)
 
 
 def load_single_task(task_id):
@@ -81,6 +84,26 @@ def visualize_arc_task(inputs, outputs, title="ARC Task"):
     return fig
 
 
+def write_frame(x, path, frame_number, height, width, chn):
+    image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
+    plt.imsave(f"{path}/frame_{frame_number}.png", image_np)
+
+
+def make_video(path, total_frames, height, width, vid_num = "r"):
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(path+'/' +vid_num+'.mp4', fourcc, 15.0, (height, width))
+    for frame_number in range(total_frames):
+       frame_path = path+f"/frame_{frame_number}.png"
+       frame = cv2.imread(frame_path)
+       #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+       frame = cv2.flip(frame,1)
+       frame = cv2.rotate(frame,cv2.ROTATE_90_COUNTERCLOCKWISE)
+       frame = cv2.resize(frame, (height, width), interpolation=cv2.INTER_NEAREST)
+
+       out.write(frame)
+    out.release()
+
+
 def main():
     print("="*60)
     print(f"Baseline NCA Training on Task {TASK_ID}")
@@ -91,7 +114,7 @@ def main():
     train_in, train_out, test_in, test_out = load_single_task(TASK_ID)
 
     # Generating data augmentations
-
+    """
     train_in = [
         np.rot90(arr, k=k).copy()
         for arr in train_in
@@ -103,7 +126,7 @@ def main():
         for arr in train_out
         for k in range(4)
     ]
-
+    """
 
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
@@ -258,6 +281,7 @@ def main():
                 ax2.axis('off')
 
                 plt.savefig(OUTPUT_DIR / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
+                plt.close()
             nca.train()
 
     # After training completes
@@ -267,8 +291,13 @@ def main():
         test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
-        for _ in range(64):
+        for i in range(64):
             test_x = nca(test_x, 1.0)
+            x = test_x.detach()
+            write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS)
+
+        make_video(path_video, 128, 10 * x.shape[3], 10 * x.shape[2],
+                   type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
 
         # Convert to viewable image
         test_pred_img = aau.nca_to_rgb_image(test_x)
