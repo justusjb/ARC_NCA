@@ -327,8 +327,8 @@ def main():
     for iteration in range(TRAINING_ITERATIONS):
         nca.train()
 
-        # Select training example (cycle through)
-        idx_problem = iteration % len(pool_x)
+        # Select training example (choose random problem)
+        idx_problem = random.randrange(len(pool_x))
 
         # Get batch
         with torch.no_grad():
