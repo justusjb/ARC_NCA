@@ -135,18 +135,19 @@ def main():
 
     # Generating data augmentations
     #"""
+    use_flips = False
 
     train_in = [
         np.rot90(flipped_arr, k=k).copy()
         for arr in train_in
-        for flipped_arr in [arr, np.flip(arr, axis=1)]
+        for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
         for k in range(4)
     ]
 
     train_out = [
         np.rot90(flipped_arr, k=k).copy()
         for arr in train_out
-        for flipped_arr in [arr, np.flip(arr, axis=1)]
+        for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
         for k in range(4)
     ]
     #"""
@@ -314,12 +315,12 @@ def main():
         test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
-        for i in range(EVAL_STEPS+50):
+        for i in range(EVAL_STEPS+100):
             test_x = nca(test_x, 1.0)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS)
 
-        make_video(path_video, EVAL_STEPS+50, 10 * x.shape[3], 10 * x.shape[2],
+        make_video(path_video, EVAL_STEPS+100, 10 * x.shape[3], 10 * x.shape[2],
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
 
         # Convert to viewable image
