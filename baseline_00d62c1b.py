@@ -314,7 +314,7 @@ def main():
 
     # Setup optimizer
     optim = torch.optim.AdamW(nca.parameters(), lr=LEARNING_RATE)
-    scheduler = torch.optim.lr_scheduler.StepLR(optim, step_size=2000, gamma=0.3)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
 
     # Training
     print("\n[5/6] Training...")
