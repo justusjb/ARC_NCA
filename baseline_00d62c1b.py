@@ -27,8 +27,8 @@ GENESIZE = vft.GENESIZE
 
 # Task-specific settings
 TASK_ID = "00d62c1b"
-TRAINING_ITERATIONS = 3000
-LEARNING_RATE = 1e-3 # lowered from 1e-3
+TRAINING_ITERATIONS = 5000
+LEARNING_RATE = 5e-5 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
@@ -422,12 +422,12 @@ def main():
         test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
-        for i in range(EVAL_STEPS+100):
+        for i in range(EVAL_STEPS+1000):
             test_x = nca(test_x, 1.0)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE)
 
-        make_video(path_video, EVAL_STEPS+100, 10 * x.shape[3], 10 * x.shape[2],
+        make_video(path_video, EVAL_STEPS+1000, 10 * x.shape[3], 10 * x.shape[2],
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
 
         # Convert to viewable image
