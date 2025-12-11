@@ -44,6 +44,21 @@ OUTPUT_DIR_PHOTOS.mkdir(parents=True, exist_ok=True)
 path_video = Path("results") / TASK_ID / "video"
 path_video.mkdir(parents=True, exist_ok=True)
 
+ARC_COLOR_MAP_NP = np.array([
+    [0, 0, 0],       # 0: black
+    [0, 116, 217],   # 1: blue
+    [255, 65, 54],   # 2: red
+    [46, 204, 64],   # 3: green
+    [255, 220, 0],   # 4: yellow
+    [170, 170, 170], # 5: gray
+    [240, 18, 190],  # 6: magenta
+    [255, 133, 27],  # 7: orange
+    [127, 219, 255], # 8: light blue
+    [135, 60, 0]     # 9: brown
+], dtype=np.float32) / 255.0
+
+ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
+
 
 def load_single_task(task_id):
     """Load a single ARC task by ID
@@ -91,21 +106,8 @@ def visualize_arc_task(inputs, outputs, title="ARC Task"):
 
 def arc_to_rgb_display(arc_grid):
     """Convert raw ARC grid (0-9 integers) to RGB using ARC color palette"""
-    color_map = np.array([
-        [0, 0, 0],  # 0: black
-        [0, 116, 217],  # 1: blue
-        [255, 65, 54],  # 2: red
-        [46, 204, 64],  # 3: green
-        [255, 220, 0],  # 4: yellow
-        [170, 170, 170],  # 5: gray
-        [240, 18, 190],  # 6: magenta
-        [255, 133, 27],  # 7: orange
-        [127, 219, 255],  # 8: light blue
-        [135, 60, 0]  # 9: brown
-    ], dtype=np.float32) / 255.0
+    return ARC_COLOR_MAP_NP[arc_grid]
 
-    rgb = color_map[arc_grid]
-    return rgb
 
 def visualize_results(nca, train_in, train_out, test_in, test_out,
                       nca_train_in, nca_train_out, nca_test_in, nca_test_out, mode="rgb"):
@@ -157,23 +159,10 @@ def visualize_results(nca, train_in, train_out, test_in, test_out,
 
 def write_frame(x, path, frame_number, height, width, chn, mode="rgb"):
     if mode == "onehot":
-        color_map = torch.tensor([
-            [0, 0, 0],  # 0: black
-            [0, 116, 217],  # 1: blue
-            [255, 65, 54],  # 2: red
-            [46, 204, 64],  # 3: green
-            [255, 220, 0],  # 4: yellow
-            [170, 170, 170],  # 5: gray
-            [240, 18, 190],  # 6: magenta
-            [255, 133, 27],  # 7: orange
-            [127, 219, 255],  # 8: light blue
-            [135, 60, 0]  # 9: brown
-        ], dtype=torch.float32) / 255.0
-
         # x shape: [B, C, H, W]
         # Argmax over one-hot channels (0-9)
         color_indices = torch.argmax(x[0, :10, :, :], dim=0)  # [H, W]
-        rgb = color_map[color_indices]  # [H, W, 3]
+        rgb = ARC_COLOR_MAP_TORCH[color_indices]  # [H, W, 3]
 
         # Apply alpha mask
         alpha = x[0, 10, :, :].unsqueeze(-1)  # [H, W, 1]
