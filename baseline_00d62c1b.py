@@ -161,14 +161,14 @@ def write_frame(x, path, frame_number, height, width, chn, mode="rgb"):
     if mode == "onehot":
         # x shape: [B, C, H, W]
         # Argmax over one-hot channels (0-9)
-        color_indices = torch.argmax(x[0, :10, :, :], dim=0)  # [H, W]
+        color_indices = torch.argmax(x[0, :10, :, :], dim=0).cpu()  # [H, W]
         rgb = ARC_COLOR_MAP_TORCH[color_indices]  # [H, W, 3]
 
         # Apply alpha mask
-        alpha = x[0, 10, :, :].unsqueeze(-1)  # [H, W, 1]
+        alpha = x[0, 10, :, :].unsqueeze(-1).cpu()  # [H, W, 1]
         rgb = rgb * alpha
 
-        image_np = rgb.cpu().numpy().clip(0, 1)
+        image_np = rgb.numpy().clip(0, 1)
     elif mode == "rgb":
         image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
     else:
