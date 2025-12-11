@@ -28,7 +28,7 @@ GENESIZE = vft.GENESIZE
 # Task-specific settings
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 5000
-LEARNING_RATE = 1e-4 # lowered from 1e-3
+LEARNING_RATE = 4e-4 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
@@ -264,7 +264,7 @@ def main():
         total_loss=0
         for i in range(n_steps):
             x = nca(x, 0.5)
-            if i in [n_steps-1,n_steps-2, n_steps-3, n_steps-4, n_steps-5]:
+            if i in [n_steps-1]:
                 step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
                 total_loss = total_loss + step_loss
 
