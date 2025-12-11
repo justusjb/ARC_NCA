@@ -388,14 +388,14 @@ def main():
         total_loss=0
 
         damage_step = -1
-        if random.random() < 0.05:  # Only ~5% of all training iterations
+        if random.random() < 0.3:  # Only ~5% of all training iterations
             damage_step = random.randint(10, max(11, n_steps - 5))
 
         for i in range(n_steps):
 
             if i == damage_step:
                 # Damage only 1-2 samples, not all
-                n_to_damage = random.randint(1, 2)
+                n_to_damage = random.randint(5, BATCH_SIZE//2)
                 h, w = x.shape[2:]
                 damage_masks = make_circle_masks(n_to_damage, h, w, DEVICE).unsqueeze(1)
                 x[-n_to_damage:] *= damage_masks
