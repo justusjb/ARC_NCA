@@ -57,6 +57,28 @@ def max_n_colors(inputs: list[list[torch.Tensor]], outputs: list[list[torch.Tens
 def arc_to_nca_space(n: int, tensor: torch.Tensor, num_channels: int, gene_size : int, device : str = DEVICE,
                      mode = "rgb", gene_location: list[int] = list[1], tensor2: torch.Tensor = None, gene_location2 : list[int] = list[2], is_invis = 1) -> torch.Tensor:
     #n = tensor.unique().shape[0]
+    if mode == "onehot":
+        # Create one-hot encoding for 10 colors (0-9)
+        onehot = torch.zeros((10, tensor.shape[0], tensor.shape[1]), device=device)
+        for color in range(10):
+            onehot[color] = (tensor == color).float()
+
+        # Alpha channel (alive mask)
+        alpha = (tensor > 0).float() * is_invis
+        mask = tensor > 0
+
+        # Gene encoding (same structure as RGB mode)
+        binary_tensor = ((tensor.unsqueeze(-1) >> torch.arange(gene_size, device=device)) & 1).bool()
+        binary_tensor = binary_tensor.float()
+        underlying = (binary_tensor.clone() * mask[:, :, None]).movedim(2, 0)
+
+        # Padding to reach num_channels
+        # Total: 10 (onehot) + 1 (alpha) + padding + gene_size = num_channels
+        padding_size = num_channels - 11 - gene_size
+        padding = torch.zeros_like(tensor, device=device).tile(padding_size, 1, 1)
+
+        return torch.cat((onehot, alpha[None, ...], padding, underlying), dim=0)
+
     if mode == "rgb":
         h = tensor/n * 360
         l = 0.5
@@ -204,14 +226,45 @@ def arc_to_nca_space_relative_encoding(n: int, tensor: torch.Tensor, num_channel
         return torch.cat((top[None,...], zeros[None,...], zeros[None,...], alpha[None,...], underlying), dim=0)
 
 
-def nca_to_rgb_image(nca_out : torch.Tensor) -> np.ndarray:
+def nca_to_rgb_image(nca_out : torch.Tensor, mode="rgb") -> np.ndarray:
 
     if len(nca_out.shape) == 3:
         nca_out = nca_out[None,...]
 
-    image = nca_out[0,:4,...].cpu().permute(1,2,0).numpy()
+    if mode == "onehot":
+        # ARC standard color palette (colors 0-9)
+        color_map = torch.tensor([
+            [0, 0, 0],  # 0: black
+            [0, 116, 217],  # 1: blue
+            [255, 65, 54],  # 2: red
+            [46, 204, 64],  # 3: green
+            [255, 220, 0],  # 4: yellow
+            [170, 170, 170],  # 5: gray
+            [240, 18, 190],  # 6: magenta
+            [255, 133, 27],  # 7: orange
+            [127, 219, 255],  # 8: light blue
+            [135, 60, 0]  # 9: brown
+        ], dtype=torch.float32, device=nca_out.device) / 255.0
 
-    return image
+        # Argmax over color channels (0-9) to get winning color
+        color_indices = torch.argmax(nca_out[0, :10, ...], dim=0)  # [H, W]
+
+        # Map indices to RGB colors
+        rgb = color_map[color_indices]  # [H, W, 3]
+
+        # Apply alpha mask (channel 10)
+        alpha = nca_out[0, 10, :, :].unsqueeze(-1)  # [H, W, 1]
+        rgb = rgb * alpha
+
+        return rgb.cpu().numpy()
+
+    elif mode == "rgb":
+
+        image = nca_out[0,:4,...].cpu().permute(1,2,0).numpy()
+        return image
+
+    else:
+        raise NotImplementedError("Only rgb and onehot are supported")
 
 def filter_problems(input_problems: list[list[torch.Tensor]], output_problems: list[list[torch.Tensor]], input_eval: list[list[torch.Tensor]], output_eval: list[list[torch.Tensor]]) -> tuple[list[list[torch.Tensor]], list[list[torch.Tensor]], list[list[torch.Tensor]] ,list[list[torch.Tensor]]]:
     filtered_inputs = []

@@ -28,10 +28,11 @@ GENESIZE = vft.GENESIZE
 # Task-specific settings
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 5000
-LEARNING_RATE = 4e-4 # lowered from 1e-3
+LEARNING_RATE = 1e-3 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
+MODE = "onehot"
 
 # Paths
 DATA_ROOT = Path("ArcData/data")
@@ -176,7 +177,7 @@ def main():
     ) + 1
     print(f"  - Max colors: {max_colors}")
 
-    mode = "rgb"
+    mode = MODE
     genes = [i for i in range(GENESIZE)]
 
     # Convert numpy arrays to torch tensors (keep as integers for bitwise ops)
@@ -265,7 +266,12 @@ def main():
         for i in range(n_steps):
             x = nca(x, 0.5)
             if i in [n_steps-1]:
-                step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
+                if MODE == "rgb":
+                    step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
+                elif MODE == "onehot":
+                    step_loss = ((y[:, :11, :, :]) - (x[:, :11, :, :])).pow(2).mean()
+                else:
+                    raise NotImplementedError("Only rgb and onehot are supported")
                 total_loss = total_loss + step_loss
 
         # Compute loss (MSE on first 4 channels - RGB + alpha)
@@ -295,11 +301,11 @@ def main():
                 for i in range(EVAL_STEPS+20):
                     test_x = nca(test_x, 1.0)
                     if i == EVAL_STEPS-1:
-                        test_pred_img1 = aau.nca_to_rgb_image(test_x)
+                        test_pred_img1 = aau.nca_to_rgb_image(test_x, mode=MODE)
 
                 # Convert to viewable image
-                test_pred_img2 = aau.nca_to_rgb_image(test_x)
-                test_true_img = aau.nca_to_rgb_image(test_nca_out[0])
+                test_pred_img2 = aau.nca_to_rgb_image(test_x, mode=MODE)
+                test_true_img = aau.nca_to_rgb_image(test_nca_out[0], mode=MODE)
 
                 # Plot side by side
                 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
@@ -335,8 +341,8 @@ def main():
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
 
         # Convert to viewable image
-        test_pred_img = aau.nca_to_rgb_image(test_x)
-        test_true_img = aau.nca_to_rgb_image(test_nca_out[0])
+        test_pred_img = aau.nca_to_rgb_image(test_x, mode=MODE)
+        test_true_img = aau.nca_to_rgb_image(test_nca_out[0], mode=MODE)
 
         # Plot side by side
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
