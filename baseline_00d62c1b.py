@@ -89,6 +89,24 @@ def visualize_arc_task(inputs, outputs, title="ARC Task"):
     return fig
 
 
+def arc_to_rgb_display(arc_grid):
+    """Convert raw ARC grid (0-9 integers) to RGB using ARC color palette"""
+    color_map = np.array([
+        [0, 0, 0],  # 0: black
+        [0, 116, 217],  # 1: blue
+        [255, 65, 54],  # 2: red
+        [46, 204, 64],  # 3: green
+        [255, 220, 0],  # 4: yellow
+        [170, 170, 170],  # 5: gray
+        [240, 18, 190],  # 6: magenta
+        [255, 133, 27],  # 7: orange
+        [127, 219, 255],  # 8: light blue
+        [135, 60, 0]  # 9: brown
+    ], dtype=np.float32) / 255.0
+
+    rgb = color_map[arc_grid]
+    return rgb
+
 def visualize_results(nca, train_in, train_out, test_in, test_out,
                       nca_train_in, nca_train_out, nca_test_in, nca_test_out, mode="rgb"):
     """Visualize training and test predictions vs ground truth"""
@@ -119,7 +137,7 @@ def visualize_results(nca, train_in, train_out, test_in, test_out,
     # Training examples
     for i in range(n_train):
         # Input (raw ARC)
-        axes[i, 0].imshow(train_in[i], cmap='tab10', vmin=0, vmax=9)
+        axes[i, 0].imshow(arc_to_rgb_display(train_in[i]))
         axes[i, 0].set_title(f"Train {i + 1} Input")
         axes[i, 0].axis('off')
 
@@ -129,7 +147,7 @@ def visualize_results(nca, train_in, train_out, test_in, test_out,
         axes[i, 1].axis('off')
 
         # Ground truth (raw ARC)
-        axes[i, 2].imshow(train_out[i], cmap='tab10', vmin=0, vmax=9)
+        axes[i, 2].imshow(arc_to_rgb_display(train_out[i]))
         axes[i, 2].set_title(f"Train {i + 1} Truth")
         axes[i, 2].axis('off')
 
