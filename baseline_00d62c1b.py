@@ -349,7 +349,7 @@ def main():
 
         total_loss=0
         for i in range(n_steps):
-            x = nca(x, 0.5)
+            x = nca(x, 0.75)
             if i in [n_steps-1]:
                 if MODE == "rgb":
                     step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
@@ -383,7 +383,7 @@ def main():
 
                 # Run NCA
                 for i in range(EVAL_STEPS+100):
-                    test_x = ema_nca(test_x, 1.0)
+                    test_x = ema_nca.module(test_x, 0.75)
                     if i == EVAL_STEPS-1:
                         test_pred_img1 = aau.nca_to_rgb_image(test_x, mode=MODE)
                     if i== EVAL_STEPS+19:
@@ -419,8 +419,16 @@ def main():
     print("\n[6/8] Generating test prediction...")
 
     ema_nca.eval()
+    nca.eval()
+
+    print("NCA params:", nca.w1.weight[0, 0, 0])
+
+    # EMA model parameters (smoothed average)
+    print("EMA NCA params:", ema_nca.module.w1.weight[0, 0, 0])
+
+
     with torch.no_grad():
-        fig = visualize_results(ema_nca, train_in, train_out, test_in, test_out,
+        fig = visualize_results(ema_nca.module, train_in, train_out, test_in, test_out,
                                 nca_in, nca_out, test_nca_in, test_nca_out, mode=MODE)
         plt.savefig(OUTPUT_DIR / "all_predictions.png", dpi=150, bbox_inches='tight')
         print(f"  Saved: {OUTPUT_DIR / 'all_predictions.png'}")
@@ -431,7 +439,7 @@ def main():
 
         # Run NCA
         for i in range(EVAL_STEPS+1000):
-            test_x = ema_nca(test_x, 1.0)
+            test_x = ema_nca.module(test_x, 0.75)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE)
 
