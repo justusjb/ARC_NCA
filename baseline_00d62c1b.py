@@ -207,6 +207,44 @@ def make_video(path, total_frames, height, width, vid_num = "r"):
     out.release()
 
 
+def make_circle_masks(n, h, w, device):
+    """
+    Create n random circular damage masks of size (h, w).
+
+    Args:
+        n: Number of masks to create
+        h: Height of each mask
+        w: Width of each mask
+        device: torch device (e.g., 'cuda' or 'cpu')
+
+    Returns:
+        Tensor of shape [n, h, w] where:
+        - 0.0 = inside circle (damaged region, will be zeroed out)
+        - 1.0 = outside circle (preserved region)
+    """
+    # Create coordinate grid from -1 to 1
+    x = torch.linspace(-1.0, 1.0, w, device=device)[None, None, :]  # [1, 1, w]
+    y = torch.linspace(-1.0, 1.0, h, device=device)[None, :, None]  # [1, h, 1]
+
+    # Random circle centers (offset from grid center)
+    center = torch.rand(2, n, 1, 1, device=device) * 1.0 - 0.5  # [-0.5, 0.5]
+
+    # Random radii
+    r = torch.rand(n, 1, 1, device=device) * 0.15 + 0.05  # [0.05, 0.2] = .5px - 2px damage circle radius
+
+    # Compute normalized distance from center
+    x_dist = (x - center[0]) / r  # Broadcasting: [n, 1, w]
+    y_dist = (y - center[1]) / r  # Broadcasting: [n, h, 1]
+
+    # Circle mask: 1 inside circle, 0 outside
+    circle = (x_dist * x_dist + y_dist * y_dist < 1.0).float()
+
+    # Damage mask: 0 inside (damaged), 1 outside (preserved)
+    damage_mask = 1.0 - circle
+
+    return damage_mask  # [n, h, w]
+
+
 def main():
     print("="*60)
     print(f"Baseline NCA Training on Task {TASK_ID}")
@@ -348,8 +386,22 @@ def main():
         n_steps = random.randrange(*STEPS_BETWEEN_ITERATIONS)
 
         total_loss=0
+
+        damage_step = -1
+        if random.random() < 0.05:  # Only ~5% of all training iterations
+            damage_step = random.randint(10, max(11, n_steps - 5))
+
         for i in range(n_steps):
+
+            if i == damage_step:
+                # Damage only 1-2 samples, not all
+                n_to_damage = random.randint(1, 2)
+                h, w = x.shape[2:]
+                damage_masks = make_circle_masks(n_to_damage, h, w, DEVICE).unsqueeze(1)
+                x[-n_to_damage:] *= damage_masks
+
             x = nca(x, 0.75)
+
             if i in [n_steps-1]:
                 if MODE == "rgb":
                     step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
