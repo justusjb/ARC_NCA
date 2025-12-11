@@ -220,7 +220,7 @@ def main():
     print("\n[6/8] Generating test prediction...")
     nca.eval()
     with torch.no_grad():
-        test_x = test_nca_in[0].clone().to(DEVICE)
+        test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
         for _ in range(64):
