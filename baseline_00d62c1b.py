@@ -217,23 +217,24 @@ def main():
     train_in, train_out, test_in, test_out = load_single_task(TASK_ID)
 
     # Generating data augmentations
-    #"""
+
+    use_augmentation = False
     use_flips = False
 
-    train_in = [
-        np.rot90(flipped_arr, k=k).copy()
-        for arr in train_in
-        for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
-        for k in range(4)
-    ]
+    if use_augmentation:
+        train_in = [
+            np.rot90(flipped_arr, k=k).copy()
+            for arr in train_in
+            for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
+            for k in range(4)
+        ]
 
-    train_out = [
-        np.rot90(flipped_arr, k=k).copy()
-        for arr in train_out
-        for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
-        for k in range(4)
-    ]
-    #"""
+        train_out = [
+            np.rot90(flipped_arr, k=k).copy()
+            for arr in train_out
+            for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
+            for k in range(4)
+        ]
 
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
