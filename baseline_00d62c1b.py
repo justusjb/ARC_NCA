@@ -94,7 +94,7 @@ def make_video(path, total_frames, height, width, vid_num = "r"):
     output_path = Path(path) / f'{vid_num}.mp4'
     out = cv2.VideoWriter(output_path, fourcc, 15.0, (height, width))
     for frame_number in range(total_frames):
-       frame_path = Path(path) / f"/frame_{frame_number}.png"
+       frame_path = Path(path) / f"frame_{frame_number}.png"
        frame = cv2.imread(frame_path)
        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
        frame = cv2.flip(frame,1)
