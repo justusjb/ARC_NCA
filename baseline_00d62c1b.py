@@ -92,7 +92,7 @@ def write_frame(x, path, frame_number, height, width, chn):
     image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
 
     # Convert to uint8 format for OpenCV operations
-    image_uint8 = (image_np * 255).astype('uint8')
+    image_uint8 = (image_np * 255).astype('uint8').copy()
 
     # Add frame number text
     cv2.putText(image_uint8,
