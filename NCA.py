@@ -285,7 +285,7 @@ class CA(torch.nn.Module):
     #self.w2.weight.data.zero_()
     self.mask_n = mask_n
 
-  def forward(self, x, update_rate=0.5):
+  def forward(self, x, update_rate=0.75):
       y = self.perc(x)
 
       y = torch.cat((y, x), dim=1)
@@ -295,6 +295,7 @@ class CA(torch.nn.Module):
       y = self.dropout2(y)
       y = self.w2(y)
       b, c, h, w = y.shape
+      update_rate = torch.rand(1, device=x.device).item() * update_rate
       update_mask = (torch.rand(b, 1, h, w, device=DEVICE) + update_rate).floor()
       px = torch.nn.functional.pad(x, [1,1,1,1])
       #pre_life_mask = torch.nn.functional.max_pool2d(px[:, None, 3, ...], 3, 1, ).cuda() > 0.1
