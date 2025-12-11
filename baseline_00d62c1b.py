@@ -219,6 +219,30 @@ def main():
         # Print progress every 100 iterations
         if iteration % 100 == 0:
             print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f}")
+            nca.eval()
+            with torch.no_grad():
+                test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
+
+                # Run NCA
+                for _ in range(64):
+                    test_x = nca(test_x, 1.0)
+
+                # Convert to viewable image
+                test_pred_img = aau.nca_to_rgb_image(test_x)
+                test_true_img = aau.nca_to_rgb_image(test_nca_out[0])
+
+                # Plot side by side
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+                ax1.imshow(test_pred_img)
+                ax1.set_title("NCA Prediction")
+                ax1.axis('off')
+
+                ax2.imshow(test_true_img)
+                ax2.set_title("Ground Truth")
+                ax2.axis('off')
+
+                plt.savefig(OUTPUT_DIR / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
+            nca.train()
 
     # After training completes
     print("\n[6/8] Generating test prediction...")
@@ -244,8 +268,8 @@ def main():
         ax2.set_title("Ground Truth")
         ax2.axis('off')
 
-        plt.savefig(OUTPUT_DIR / "test_prediction.png", dpi=150, bbox_inches='tight')
-        print(f"  Saved: {OUTPUT_DIR / 'test_prediction.png'}")
+        plt.savefig(OUTPUT_DIR / "test_prediction_final.png", dpi=150, bbox_inches='tight')
+        print(f"  Saved: {OUTPUT_DIR / 'test_prediction_final.png'}")
 
     # Save model
     model_path = OUTPUT_DIR / "baseline_model.pth"
