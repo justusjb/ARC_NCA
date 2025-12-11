@@ -30,6 +30,7 @@ TRAINING_ITERATIONS = 3000
 LEARNING_RATE = 3e-4 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (10, 11)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
+EVAL_STEPS =64
 
 # Paths
 DATA_ROOT = Path("ArcData/data")
@@ -264,7 +265,7 @@ def main():
                 test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
                 # Run NCA
-                for _ in range(64):
+                for _ in range(EVAL_STEPS):
                     test_x = nca(test_x, 1.0)
 
                 # Convert to viewable image
@@ -292,12 +293,12 @@ def main():
         test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
-        for i in range(64):
+        for i in range(EVAL_STEPS):
             test_x = nca(test_x, 1.0)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS)
 
-        make_video(path_video, 128, 10 * x.shape[3], 10 * x.shape[2],
+        make_video(path_video, EVAL_STEPS, 10 * x.shape[3], 10 * x.shape[2],
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
 
         # Convert to viewable image
