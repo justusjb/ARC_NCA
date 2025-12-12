@@ -500,7 +500,7 @@ def main():
                             identity = torch.eye(c, device=y.device)
                             decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
 
-                            step_loss = step_loss + 5.0 * decorr_loss + 5.0 * mean_variance
+                            step_loss = step_loss + 5.0 * decorr_loss - 5.0 * mean_variance
                         else:
                             raise AssertionError("Decorrelation enabled but no hidden channels found")
 
