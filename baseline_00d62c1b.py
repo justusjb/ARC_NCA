@@ -13,6 +13,7 @@ from pathlib import Path
 import random
 import cv2
 import shutil
+from tqdm import tqdm
 
 from NCA import CA
 import arc_agi_utils as aau
@@ -369,7 +370,7 @@ def main():
 
     loss_log = []
 
-    for iteration in range(TRAINING_ITERATIONS):
+    for iteration in tqdm(range(TRAINING_ITERATIONS)):
         nca.train()
 
         # Select training example (choose random problem)
