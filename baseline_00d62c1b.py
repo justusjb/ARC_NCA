@@ -14,6 +14,7 @@ import random
 import cv2
 import shutil
 from tqdm import tqdm
+from scipy.ndimage import zoom
 
 from NCA import CA
 import arc_agi_utils as aau
@@ -63,6 +64,8 @@ ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 DAMAGE = False
 DAMAGE_START_ITER = 200  # Start damage after 1000 iterations
 DAMAGE_RAMP_ITERS = 200  # Gradually increase over 1000 iterations
+
+SHOW_HIDDEN = True
 
 
 def load_single_task(task_id):
@@ -162,44 +165,82 @@ def visualize_results(nca, train_in, train_out, test_in, test_out,
     return fig
 
 
-def write_frame(x, path, frame_number, height, width, chn, mode="rgb"):
+def write_frame(x, path, frame_number, height, width, chn, mode="rgb", show_hidden=False, hidden_cols=3):
+    """
+    show_hidden: if True, shows hidden channels to the right of main image
+    hidden_cols: number of columns for hidden channel grid
+    """
     if mode == "onehot":
         # x shape: [B, C, H, W]
         # Argmax over one-hot channels (0-9)
         color_indices = torch.argmax(x[0, :10, :, :], dim=0).cpu()  # [H, W]
         rgb = ARC_COLOR_MAP_TORCH[color_indices]  # [H, W, 3]
-
-        # Apply alpha mask
         alpha = x[0, 10, :, :].unsqueeze(-1).cpu()  # [H, W, 1]
         rgb = rgb * alpha
-
         image_np = rgb.permute(1, 0, 2).numpy().clip(0, 1)
+
+        if show_hidden and chn > 11:  # Has hidden channels
+            num_hidden = chn - 11
+            hidden = x[0, 11:, :, :].cpu()  # [num_hidden, H, W]
+
+            # Normalize each hidden channel to [0, 1] for visualization
+            hidden_viz = []
+            for i in range(num_hidden):
+                h = hidden[i]
+                h_norm = (h - h.min()) / (h.max() - h.min() + 1e-8)
+                hidden_viz.append(h_norm)
+
+            # Create grid of hidden channels
+            hidden_rows = (num_hidden + hidden_cols - 1) // hidden_cols
+            h, w = hidden[0].shape
+
+            grid = torch.zeros(hidden_rows * h, hidden_cols * w)
+            for idx, h_channel in enumerate(hidden_viz):
+                row = idx // hidden_cols
+                col = idx % hidden_cols
+                grid[row * h:(row + 1) * h, col * w:(col + 1) * w] = h_channel
+
+            # Convert to RGB (grayscale)
+            grid_rgb = plt.cm.viridis(grid.numpy())[:, :, :3]  # Use viridis colormap
+
+            # Resize to match main image height
+            zoom_factor = image_np.shape[0] / grid_rgb.shape[0]
+            grid_rgb = zoom(grid_rgb, (zoom_factor, zoom_factor, 1), order=0)
+
+            # Concatenate horizontally
+            image_np = np.concatenate([image_np, grid_rgb], axis=1)
+
     elif mode == "rgb":
         image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
     else:
         raise NotImplementedError("Only rgb and onehot are supported")
+
     plt.imsave(f"{path}/frame_{frame_number}.png", image_np)
 
 
-def make_video(path, total_frames, height, width, vid_num = "r"):
+def make_video(path, total_frames, height, width, vid_num="r", show_hidden=False):
+    """
+    show_hidden: if True, video width is doubled to show hidden channels
+    """
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_width = width * 2 if show_hidden else width  # Double width if showing hidden
     output_path = Path(path) / f'{vid_num}.mp4'
-    out = cv2.VideoWriter(output_path, fourcc, 15.0, (height, width))
+    out = cv2.VideoWriter(str(output_path), fourcc, 15.0, (video_width, height))
+
     for frame_number in range(total_frames):
-       frame_path = Path(path) / f"frame_{frame_number}.png"
-       frame = cv2.imread(frame_path)
-       #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-       frame = cv2.flip(frame,1)
-       frame = cv2.rotate(frame,cv2.ROTATE_90_COUNTERCLOCKWISE)
-       frame = cv2.resize(frame, (height, width), interpolation=cv2.INTER_NEAREST)
+        frame_path = Path(path) / f"frame_{frame_number}.png"
+        frame = cv2.imread(frame_path)
+        frame = cv2.flip(frame, 1)
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        frame = cv2.resize(frame, (video_width, height), interpolation=cv2.INTER_NEAREST)
 
-       # Add text after upscaling - top right corner
-       text = f'step {frame_number+1}'
-       text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
-       text_x = width - text_size[0] - 3  # 3 pixels from right edge
-       text_y = text_size[1] + 3  # 3 pixels from top
+        # Add text after upscaling - top right corner
+        text = f'step {frame_number + 1}'
+        text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+        text_x = video_width - text_size[0] - 3  # 3 pixels from right edge
+        text_y = text_size[1] + 3  # 3 pixels from top
 
-       cv2.putText(frame,
+        cv2.putText(frame,
                    text,
                    (text_x, text_y),
                    cv2.FONT_HERSHEY_SIMPLEX,
@@ -208,7 +249,7 @@ def make_video(path, total_frames, height, width, vid_num = "r"):
                    1,  # Thinner
                    cv2.LINE_AA)
 
-       out.write(frame)
+        out.write(frame)
     out.release()
 
 
@@ -504,10 +545,11 @@ def main():
         for i in range(EVAL_STEPS+1000):
             test_x = ema_nca.module(test_x, 0.5)
             x = test_x.detach()
-            write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE)
+            write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE,
+                        show_hidden=SHOW_HIDDEN, hidden_cols=3)
 
         make_video(path_video, EVAL_STEPS+1000, 10 * x.shape[3], 10 * x.shape[2],
-                   type(nca).__name__ + "problem_" + str(TASK_ID) + "padded")
+                   type(nca).__name__ + "problem_" + str(TASK_ID) + "padded", show_hidden=SHOW_HIDDEN)
 
         # Convert to viewable image
         test_pred_img = aau.nca_to_rgb_image(test_x, mode=MODE)
