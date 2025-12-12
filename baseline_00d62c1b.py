@@ -202,10 +202,11 @@ def write_frame(x, path, frame_number, height, width, chn, mode="rgb", show_hidd
                 col = idx % hidden_cols
                 grid[row * h:(row + 1) * h, col * w:(col + 1) * w] = h_norm
 
-            # Convert to RGB with colormap
+            # Apply same permutation as main image for consistent orientation
             grid_rgb = plt.cm.viridis(grid.numpy())[:, :, :3]  # [grid_h, grid_w, 3]
+            grid_rgb = np.transpose(grid_rgb, (1, 0, 2))  # Same as permute(1, 0, 2)
 
-            # Pad main image to match hidden grid width
+            # Pad to match widths
             if image_np.shape[1] < grid_rgb.shape[1]:
                 pad_width = grid_rgb.shape[1] - image_np.shape[1]
                 padding = np.zeros((image_np.shape[0], pad_width, 3))
@@ -215,7 +216,7 @@ def write_frame(x, path, frame_number, height, width, chn, mode="rgb", show_hidd
                 padding = np.zeros((grid_rgb.shape[0], pad_width, 3))
                 grid_rgb = np.concatenate([grid_rgb, padding], axis=1)
 
-            # Now concatenate vertically (will become horizontal after rotation)
+            # Concatenate vertically
             image_np = np.concatenate([image_np, grid_rgb], axis=0)
 
     elif mode == "rgb":
@@ -226,21 +227,30 @@ def write_frame(x, path, frame_number, height, width, chn, mode="rgb", show_hidd
     plt.imsave(f"{path}/frame_{frame_number}.png", image_np)
 
 
-def make_video(path, total_frames, height, width, vid_num="r", show_hidden=False):
+def make_video(path, total_frames, upscale=10, vid_num="r", show_hidden=False):
     """
-    show_hidden: if True, video width is doubled to show hidden channels
+    upscale: multiplier for cell size (e.g., 10 = each cell becomes 10x10 pixels)
     """
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_width = width * 2 if show_hidden else width  # Double width if showing hidden
+
+    # Read first frame to get actual dimensions after concatenation
+    first_frame = cv2.imread(str(Path(path) / "frame_0.png"))
+    original_h, original_w = first_frame.shape[:2]
+
+    # After rotation: width=original_h, height=original_w
+    # Apply upscaling to both to maintain square pixels
+    video_width = original_h * upscale
+    video_height = original_w * upscale
+
     output_path = Path(path) / f'{vid_num}.mp4'
-    out = cv2.VideoWriter(str(output_path), fourcc, 15.0, (video_width, height))
+    out = cv2.VideoWriter(str(output_path), fourcc, 15.0, (video_width, video_height))
 
     for frame_number in range(total_frames):
         frame_path = Path(path) / f"frame_{frame_number}.png"
-        frame = cv2.imread(frame_path)
+        frame = cv2.imread(str(frame_path))
         frame = cv2.flip(frame, 1)
         frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        frame = cv2.resize(frame, (video_width, height), interpolation=cv2.INTER_NEAREST)
+        frame = cv2.resize(frame, (video_width, video_height), interpolation=cv2.INTER_NEAREST)
 
         # Add text after upscaling - top right corner
         text = f'step {frame_number + 1}'
@@ -556,7 +566,7 @@ def main():
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE,
                         show_hidden=SHOW_HIDDEN, hidden_cols=3)
 
-        make_video(path_video, EVAL_STEPS+1000, 10 * x.shape[3], 10 * x.shape[2],
+        make_video(path_video, EVAL_STEPS+1000, 10,
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded", show_hidden=SHOW_HIDDEN)
 
         # Convert to viewable image
