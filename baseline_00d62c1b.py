@@ -61,6 +61,7 @@ ARC_COLOR_MAP_NP = np.array([
 
 ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 
+DECORRELATION = True
 DAMAGE = False
 DAMAGE_START_ITER = 200  # Start damage after 1000 iterations
 DAMAGE_RAMP_ITERS = 200  # Gradually increase over 1000 iterations
@@ -475,8 +476,31 @@ def main():
             if i in [n_steps-1]:
                 if MODE == "rgb":
                     step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
+
                 elif MODE == "onehot":
                     step_loss = ((y[:, :11, :, :]) - (x[:, :11, :, :])).pow(2).mean()
+                    if DECORRELATION:
+                        if y.shape[1] > 11:  # Has hidden channels
+                            hidden = y[:, 11:, :, :]  # [B, num_hidden, H, W]
+
+                            # Flatten spatial dimensions
+                            b, c, h_, w_ = hidden.shape
+                            hidden_flat = hidden.reshape(b, c, h_ * w_)  # [B, C, H*W]
+
+                            # Compute correlation between channels (for first batch item)
+                            hidden_normalized = (hidden_flat[0] - hidden_flat[0].mean(dim=1, keepdim=True))
+                            hidden_normalized = hidden_normalized / (hidden_normalized.std(dim=1, keepdim=True) + 1e-8)
+
+                            correlation = torch.matmul(hidden_normalized, hidden_normalized.T) / (h_ * w_)  # [C, C]
+
+                            # Penalize off-diagonal correlations (want low correlation between different channels)
+                            identity = torch.eye(c, device=y.device)
+                            decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
+
+                            step_loss = step_loss + 0.01 * decorr_loss
+                        else:
+                            raise AssertionError("Decorrelation enabled but no hidden channels found")
+
                 else:
                     raise NotImplementedError("Only rgb and onehot are supported")
                 total_loss = total_loss + step_loss
