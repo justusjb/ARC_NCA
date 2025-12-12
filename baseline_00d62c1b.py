@@ -483,6 +483,9 @@ def main():
                         if y.shape[1] > 11:  # Has hidden channels
                             hidden = y[:, 11:, :, :]  # [B, num_hidden, H, W]
 
+                            channel_means = hidden.mean(dim=[2, 3])  # [B, C]
+                            mean_variance = channel_means.var(dim=1).mean()
+
                             # Flatten spatial dimensions
                             b, c, h_, w_ = hidden.shape
                             hidden_flat = hidden.reshape(b, c, h_ * w_)  # [B, C, H*W]
@@ -497,7 +500,7 @@ def main():
                             identity = torch.eye(c, device=y.device)
                             decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
 
-                            step_loss = step_loss + 5.0 * decorr_loss
+                            step_loss = step_loss + 5.0 * decorr_loss + 5.0 * mean_variance
                         else:
                             raise AssertionError("Decorrelation enabled but no hidden channels found")
 
