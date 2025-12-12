@@ -27,7 +27,7 @@ GENESIZE = vft.GENESIZE
 
 # Task-specific settings
 TASK_ID = "00d62c1b"
-TRAINING_ITERATIONS = 3000
+TRAINING_ITERATIONS = 7000
 LEARNING_RATE = 5e-3 # lowered from 1e-3
 STEPS_BETWEEN_ITERATIONS = (20, 31)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
@@ -60,8 +60,8 @@ ARC_COLOR_MAP_NP = np.array([
 ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 
 DAMAGE = True
-DAMAGE_START_ITER = 1000  # Start damage after 1000 iterations
-DAMAGE_RAMP_ITERS = 1000  # Gradually increase over 1000 iterations
+DAMAGE_START_ITER = 200  # Start damage after 1000 iterations
+DAMAGE_RAMP_ITERS = 200  # Gradually increase over 1000 iterations
 
 
 def load_single_task(task_id):
@@ -230,8 +230,8 @@ def make_circle_masks(n, h, w, device):
     x = torch.linspace(-1.0, 1.0, w, device=device)[None, None, :]  # [1, 1, w]
     y = torch.linspace(-1.0, 1.0, h, device=device)[None, :, None]  # [1, h, 1]
 
-    # Random circle centers (offset from grid center)
-    center = torch.rand(2, n, 1, 1, device=device) * 1.0 - 0.5  # [-0.5, 0.5]
+    # Max radius is 0.4, so keep centers at least 0.4 away from edges
+    center = torch.rand(2, n, 1, 1, device=device) * 1.2 - 0.6  # [-0.6, 0.6]
 
     # Random radii
     r = torch.rand(n, 1, 1, device=device) * 0.15 + 0.05  # [0.05, 0.2] = .5px - 2px damage circle radius
@@ -396,7 +396,7 @@ def main():
             if iteration >= DAMAGE_START_ITER:
                 # Calculate damage probability (ramps from 0 to 0.3)
                 progress = min(1.0, (iteration - DAMAGE_START_ITER) / DAMAGE_RAMP_ITERS)
-                damage_prob = 0.3 * progress
+                damage_prob = 0.5 * progress
                 if random.random() < damage_prob:
                     damage_step = random.randint(10, max(11, n_steps - 5))
 
