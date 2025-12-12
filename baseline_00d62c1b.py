@@ -59,7 +59,7 @@ ARC_COLOR_MAP_NP = np.array([
 
 ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 
-DAMAGE = True
+DAMAGE = False
 DAMAGE_START_ITER = 200  # Start damage after 1000 iterations
 DAMAGE_RAMP_ITERS = 200  # Gradually increase over 1000 iterations
 
