@@ -177,31 +177,49 @@ def write_frame(x, path, frame_number, height, width, chn, mode="rgb", show_hidd
         rgb = ARC_COLOR_MAP_TORCH[color_indices]  # [H, W, 3]
         alpha = x[0, 10, :, :].unsqueeze(-1).cpu()  # [H, W, 1]
         rgb = rgb * alpha
-        image_np = rgb.permute(1, 0, 2).numpy().clip(0, 1)
+        image_np = rgb.permute(1, 0, 2).numpy().clip(0, 1)  # [H, W, 3]
 
         if show_hidden and chn > 11:
             num_hidden = chn - 11
             hidden = x[0, 11:, :, :].cpu()  # [num_hidden, H, W]
 
-            # Normalize each hidden channel
-            hidden_viz = []
-            for i in range(num_hidden):
-                h = hidden[i]
-                h_norm = (h - h.min()) / (h.max() - h.min() + 1e-8)
-                hidden_viz.append(h_norm)
+            h, w = hidden[0].shape
 
-            # Stack hidden channels horizontally (each at FULL size)
-            hidden_row = torch.stack(hidden_viz, dim=1)  # [H, num_hidden, W]
-            hidden_row = hidden_row.reshape(hidden[0].shape[0], -1)  # [H, num_hidden*W]
+            # Create grid: hidden_rows × hidden_cols
+            hidden_rows = (num_hidden + hidden_cols - 1) // hidden_cols
 
-            # Convert to RGB with viridis colormap
-            grid_rgb = plt.cm.viridis(hidden_row.numpy())[:, :, :3]
+            # Initialize grid with zeros
+            grid_h = hidden_rows * h
+            grid_w = hidden_cols * w
+            grid = torch.zeros(grid_h, grid_w)
 
-            # Concatenate vertically (will be rotated to horizontal later)
+            # Fill grid with normalized hidden channels
+            for idx in range(num_hidden):
+                h_channel = hidden[idx]
+                h_norm = (h_channel - h_channel.min()) / (h_channel.max() - h_channel.min() + 1e-8)
+
+                row = idx // hidden_cols
+                col = idx % hidden_cols
+                grid[row * h:(row + 1) * h, col * w:(col + 1) * w] = h_norm
+
+            # Convert to RGB with colormap
+            grid_rgb = plt.cm.viridis(grid.numpy())[:, :, :3]  # [grid_h, grid_w, 3]
+
+            # Pad main image to match hidden grid width
+            if image_np.shape[1] < grid_rgb.shape[1]:
+                pad_width = grid_rgb.shape[1] - image_np.shape[1]
+                padding = np.zeros((image_np.shape[0], pad_width, 3))
+                image_np = np.concatenate([image_np, padding], axis=1)
+            elif grid_rgb.shape[1] < image_np.shape[1]:
+                pad_width = image_np.shape[1] - grid_rgb.shape[1]
+                padding = np.zeros((grid_rgb.shape[0], pad_width, 3))
+                grid_rgb = np.concatenate([grid_rgb, padding], axis=1)
+
+            # Now concatenate vertically (will become horizontal after rotation)
             image_np = np.concatenate([image_np, grid_rgb], axis=0)
 
     elif mode == "rgb":
-        image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
+        image_np = x.clone().detach().cpu().permute(0, 3, 2, 1).numpy().clip(0, 1)[0, :, :, :3]
     else:
         raise NotImplementedError("Only rgb and onehot are supported")
 
