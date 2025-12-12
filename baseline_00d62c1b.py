@@ -179,36 +179,26 @@ def write_frame(x, path, frame_number, height, width, chn, mode="rgb", show_hidd
         rgb = rgb * alpha
         image_np = rgb.permute(1, 0, 2).numpy().clip(0, 1)
 
-        if show_hidden and chn > 11:  # Has hidden channels
+        if show_hidden and chn > 11:
             num_hidden = chn - 11
             hidden = x[0, 11:, :, :].cpu()  # [num_hidden, H, W]
 
-            # Normalize each hidden channel to [0, 1] for visualization
+            # Normalize each hidden channel
             hidden_viz = []
             for i in range(num_hidden):
                 h = hidden[i]
                 h_norm = (h - h.min()) / (h.max() - h.min() + 1e-8)
                 hidden_viz.append(h_norm)
 
-            # Create grid of hidden channels
-            hidden_rows = (num_hidden + hidden_cols - 1) // hidden_cols
-            h, w = hidden[0].shape
+            # Stack hidden channels horizontally (each at FULL size)
+            hidden_row = torch.stack(hidden_viz, dim=1)  # [H, num_hidden, W]
+            hidden_row = hidden_row.reshape(hidden[0].shape[0], -1)  # [H, num_hidden*W]
 
-            grid = torch.zeros(hidden_rows * h, hidden_cols * w)
-            for idx, h_channel in enumerate(hidden_viz):
-                row = idx // hidden_cols
-                col = idx % hidden_cols
-                grid[row * h:(row + 1) * h, col * w:(col + 1) * w] = h_channel
+            # Convert to RGB with viridis colormap
+            grid_rgb = plt.cm.viridis(hidden_row.numpy())[:, :, :3]
 
-            # Convert to RGB (grayscale)
-            grid_rgb = plt.cm.viridis(grid.numpy())[:, :, :3]  # Use viridis colormap
-
-            # Resize to match main image height
-            zoom_factor = image_np.shape[0] / grid_rgb.shape[0]
-            grid_rgb = zoom(grid_rgb, (zoom_factor, zoom_factor, 1), order=0)
-
-            # Concatenate horizontally
-            image_np = np.concatenate([image_np, grid_rgb], axis=1)
+            # Concatenate vertically (will be rotated to horizontal later)
+            image_np = np.concatenate([image_np, grid_rgb], axis=0)
 
     elif mode == "rgb":
         image_np = x.clone().detach().cpu().permute(0,3,2,1).numpy().clip(0,1)[0,:,:,:3]
