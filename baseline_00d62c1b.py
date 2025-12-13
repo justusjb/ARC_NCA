@@ -29,9 +29,9 @@ GENESIZE = vft.GENESIZE
 
 # Task-specific settings
 TASK_ID = "00d62c1b"
-TRAINING_ITERATIONS = 6000
+TRAINING_ITERATIONS = 5000
 LEARNING_RATE = 2e-3 # 5e-3 for 3x3, 1e-3 for 7x7
-STEPS_BETWEEN_ITERATIONS = (100, 151)  # Random range, originally 32,64, now always 10.
+STEPS_BETWEEN_ITERATIONS = (80, 121)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
 MODE = "onehot"
@@ -500,8 +500,8 @@ def main():
                             identity = torch.eye(c, device=y.device)
                             decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
 
-                            # 0 for 500 steps, then ramp-up to 10 over 2000 steps
-                            decorr_weight = min(10.0, ((iteration-500) / 2000) * 10.0) if iteration > 500 else 0
+                            # 0 for 1500 steps, then ramp-up to 10 over 2000 steps
+                            decorr_weight = min(10.0, ((iteration-1500) / 2000) * 10.0) if iteration > 1500 else 0
 
                             step_loss = step_loss + decorr_weight * decorr_loss - 0.0 * mean_variance
                         else:
