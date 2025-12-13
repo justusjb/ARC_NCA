@@ -550,7 +550,8 @@ def main():
                 test_true_img = aau.nca_to_rgb_image(test_nca_out[0], mode=MODE)
 
                 # Plot side by side
-                fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(2, 3, figsize=(14, 16))
+                fig, axes = plt.subplots(2, 3, figsize=(14, 16))
+                (ax1, ax2, ax3, ax4, ax5, ax6) = axes.flatten()
                 ax1.imshow(np.clip(test_pred_img1, 0, 1))
                 ax1.set_title("NCA Prediction")
                 ax1.axis('off')
