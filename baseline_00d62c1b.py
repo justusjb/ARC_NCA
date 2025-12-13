@@ -29,9 +29,9 @@ GENESIZE = vft.GENESIZE
 
 # Task-specific settings
 TASK_ID = "00d62c1b"
-TRAINING_ITERATIONS = 5000
+TRAINING_ITERATIONS = 6000
 LEARNING_RATE = 2e-3 # 5e-3 for 3x3, 1e-3 for 7x7
-STEPS_BETWEEN_ITERATIONS = (80, 121)  # Random range, originally 32,64, now always 10.
+STEPS_BETWEEN_ITERATIONS = (100, 151)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
 MODE = "onehot"
@@ -500,7 +500,10 @@ def main():
                             identity = torch.eye(c, device=y.device)
                             decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
 
-                            step_loss = step_loss + 10.0 * decorr_loss - 0.0 * mean_variance
+                            # 0 for 500 steps, then ramp-up to 10 over 2000 steps
+                            decorr_weight = min(10.0, ((iteration-500) / 2000) * 10.0) if iteration > 500 else 0
+
+                            step_loss = step_loss + decorr_weight * decorr_loss - 0.0 * mean_variance
                         else:
                             raise AssertionError("Decorrelation enabled but no hidden channels found")
 
@@ -531,19 +534,23 @@ def main():
                 test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
                 # Run NCA
-                for i in range(EVAL_STEPS+100):
+                for i in range(EVAL_STEPS+1000):
                     test_x = ema_nca.module(test_x, 0.5)
                     if i == EVAL_STEPS-1:
                         test_pred_img1 = aau.nca_to_rgb_image(test_x, mode=MODE)
                     if i== EVAL_STEPS+19:
                         test_pred_img2 = aau.nca_to_rgb_image(test_x, mode=MODE)
+                    if i== EVAL_STEPS+99:
+                        test_pred_img3 = aau.nca_to_rgb_image(test_x, mode=MODE)
+                    if i== EVAL_STEPS+299:
+                        test_pred_img4 = aau.nca_to_rgb_image(test_x, mode=MODE)
 
                 # Convert to viewable image
-                test_pred_img3 = aau.nca_to_rgb_image(test_x, mode=MODE)
+                test_pred_img5 = aau.nca_to_rgb_image(test_x, mode=MODE)
                 test_true_img = aau.nca_to_rgb_image(test_nca_out[0], mode=MODE)
 
                 # Plot side by side
-                fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(18, 8))
+                fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(2, 3, figsize=(14, 16))
                 ax1.imshow(np.clip(test_pred_img1, 0, 1))
                 ax1.set_title("NCA Prediction")
                 ax1.axis('off')
@@ -556,9 +563,17 @@ def main():
                 ax3.set_title("NCA Prediction 100 steps later")
                 ax3.axis('off')
 
-                ax4.imshow(np.clip(test_true_img, 0, 1))
-                ax4.set_title("Ground Truth")
+                ax4.imshow(np.clip(test_pred_img4, 0, 1))
+                ax4.set_title("NCA Prediction 300 steps later")
                 ax4.axis('off')
+
+                ax5.imshow(np.clip(test_pred_img5, 0, 1))
+                ax5.set_title("NCA Prediction 1000 steps later")
+                ax5.axis('off')
+
+                ax6.imshow(np.clip(test_true_img, 0, 1))
+                ax6.set_title("Ground Truth")
+                ax6.axis('off')
 
                 plt.savefig(OUTPUT_DIR_PHOTOS / f"test_prediction_{iteration}.png", dpi=150, bbox_inches='tight')
                 plt.close()
