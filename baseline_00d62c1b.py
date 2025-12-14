@@ -418,8 +418,10 @@ def main():
 
     # Setup optimizer
     optim = torch.optim.AdamW(nca.parameters(), lr=LEARNING_RATE)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
-
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optim, T_0=1000, T_mult=1, eta_min=LEARNING_RATE*0.1
+    )
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
     # Training
