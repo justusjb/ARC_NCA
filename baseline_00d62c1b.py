@@ -475,7 +475,7 @@ def main():
 
             x = nca(x, 0.75)
 
-            if i in range(n_steps): # [n_steps-1]:
+            if i in [n_steps-1]: # range(n_steps):
                 if MODE == "rgb":
                     step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
 
@@ -515,7 +515,7 @@ def main():
         # Compute loss (MSE on first 4 channels - RGB + alpha)
         # total_loss+= ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
 
-        loss = total_loss / n_steps
+        loss = total_loss # / n_steps
         # Backward pass with gradient normalization
         optim.zero_grad()
         loss.backward()
