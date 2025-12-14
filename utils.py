@@ -30,7 +30,8 @@ def get_batch(pool, x_prime, batch_size, noise_level = 0.0):
         batch[:, chn // 2:, ...] = (batch[:, chn // 2:, ...] * (~m1[:,chn//2:,...]).float()) + torch.randn_like(
             batch[:, chn // 2:, ...]) * m1[:,chn//2:,...].float()
 
-    batch[0:1, :, :, :] = x_prime
+    # Previously, only first item in batch was reset to seed like this: batch[0:1, :, :, :] = x_prime
+    batch[0:8, :, :, :] = x_prime.unsqueeze(0).repeat(8, 1, 1, 1)
     
     return batch, idxs
 

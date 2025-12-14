@@ -35,6 +35,7 @@ STEPS_BETWEEN_ITERATIONS = (32, 65)  # Random range, originally 32,64
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
 MODE = "onehot"
+POOL_SIZE = 256
 
 # Paths
 DATA_ROOT = Path("ArcData/data")
@@ -399,7 +400,7 @@ def main():
     test_nca_out = [aau.pad_to_size(target_size, n) for n in test_nca_out]
 
     # Create NCA pools
-    pool_x = [n.tile(1024, 1, 1, 1) for n in nca_in]
+    pool_x = [n.tile(POOL_SIZE, 1, 1, 1) for n in nca_in]
     pool_y = nca_out
 
     print(f"  - Pool shapes: {[p.shape for p in pool_x]}")
@@ -527,9 +528,35 @@ def main():
         optim.step()
         scheduler.step()
 
-        with torch.no_grad():
-            x_clamped = torch.clamp(x.clone().detach(), -10, 10)  # Prevent explosion
-            pool_x = utils.update_problem_pool(pool_x, x_clamped, idxs, idx_problem)
+        # After training step, before pool update
+        if MODE == "onehot":
+            with torch.no_grad():
+                # Clamp states
+                x_clamped = x.clone().detach()
+                x_clamped[:, :11] = torch.clamp(x_clamped[:, :11], 0, 1)
+                x_clamped[:, 11:] = torch.clamp(x_clamped[:, 11:], -5, 5)
+
+                # Quality control: only update if better
+                improved_results = x_clamped.clone()
+
+                for i in range(BATCH_SIZE):
+                    idx = idxs[i]
+                    old_state = pool_x[idx_problem][idx:idx + 1]  # [1, C, H, W]
+                    new_state = x_clamped[i:i + 1]  # [1, C, H, W]
+
+                    # Compare losses (only on visible channels)
+                    old_loss = ((old_state[:, :11] - y[i:i + 1, :11]) ** 2).mean()
+                    new_loss = ((new_state[:, :11] - y[i:i + 1, :11]) ** 2).mean()
+
+                    if new_loss >= old_loss:  # If NOT improved
+                        improved_results[i] = old_state[0]  # Keep old state
+
+                # Update pool with only improved states
+                pool_x = utils.update_problem_pool(pool_x, improved_results, idxs, idx_problem)
+        else:
+            with torch.no_grad():
+                x_clamped = torch.clamp(x.clone().detach(), -10, 10)  # Prevent explosion
+                pool_x = utils.update_problem_pool(pool_x, x_clamped, idxs, idx_problem)
 
         ema_nca.update_parameters(nca)
 
