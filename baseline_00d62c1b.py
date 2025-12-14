@@ -73,6 +73,8 @@ USE_AUGMENTATION = True
 USE_FLIPS = True
 
 RESTART_SCHEDULE = False
+POOL_QUAL = False
+POOL_QUAL_100 = True
 
 def load_single_task(task_id):
     """Load a single ARC task by ID
@@ -528,8 +530,8 @@ def main():
         optim.step()
         scheduler.step()
 
-        # After training step, before pool update
-        if MODE == "onehot":
+        # Only put improvements in the pool
+        if POOL_QUAL:
             with torch.no_grad():
                 # Clamp states
                 x_clamped = x.clone().detach()
@@ -567,6 +569,19 @@ def main():
             print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f}")
             ema_nca.eval()
             with torch.no_grad():
+
+                # cut the worst
+                if POOL_QUAL_100:
+                    if MODE == "onehot":
+                        pool_losses = ((pool_x[idx_problem][:, :11] - pool_y[idx_problem][:, :11]) ** 2).mean(dim=[1, 2, 3])
+                        worst_count = POOL_SIZE // 10  # Replace worst 10%
+                        worst_indices = pool_losses.topk(worst_count).indices
+                        for idx in worst_indices:
+                            pool_x[idx_problem][idx] = nca_in[idx_problem].clone()
+                    else:
+                        raise NotImplementedError("Only onehot supported for cutting the worst 10% every 100 iters")
+
+
                 test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
                 # Run NCA
