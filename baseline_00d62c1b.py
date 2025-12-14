@@ -74,8 +74,7 @@ USE_AUGMENTATION = True
 USE_FLIPS = True
 
 RESTART_SCHEDULE = False
-POOL_QUAL = False
-POOL_QUAL_100 = True
+POOL_QUAL = True
 
 def load_single_task(task_id):
     """Load a single ARC task by ID
