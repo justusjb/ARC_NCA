@@ -71,6 +71,7 @@ SHOW_HIDDEN = True
 USE_AUGMENTATION = True
 USE_FLIPS = True
 
+RESTART_SCHEDULE = False
 
 def load_single_task(task_id):
     """Load a single ARC task by ID
@@ -418,10 +419,13 @@ def main():
 
     # Setup optimizer
     optim = torch.optim.AdamW(nca.parameters(), lr=LEARNING_RATE)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optim, T_0=1000, T_mult=1, eta_min=LEARNING_RATE*0.1
-    )
+    if RESTART_SCHEDULE:
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optim, T_0=1000, T_mult=1, eta_min=LEARNING_RATE*0.1
+        )
+    else:
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
+
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
     # Training
