@@ -345,10 +345,12 @@ def main():
 
     # remove duplicates
     seen = set()
-    train_in, train_out = zip(*[
-        (x, y) for x, y in zip(train_in, train_out)
-        if not (x.tobytes() in seen or seen.add(x.tobytes()))
-    ])
+    train_in, train_out = [
+        list(t) for t in zip(*[
+            (x, y) for x, y in zip(train_in, train_out)
+            if not (x.tobytes() in seen or seen.add(x.tobytes()))
+        ])
+    ]
 
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
