@@ -523,6 +523,9 @@ def main():
         optim.step()
         scheduler.step()
 
+        with torch.no_grad():
+            pool_x = utils.update_problem_pool(pool_x, x.clone().detach(), idxs, idx_problem)
+
         ema_nca.update_parameters(nca)
 
         loss_log.append(loss.item())
