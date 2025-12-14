@@ -31,7 +31,7 @@ GENESIZE = vft.GENESIZE
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 5000
 LEARNING_RATE = 2e-3 # 5e-3 for 3x3, 1e-3 for 7x7
-STEPS_BETWEEN_ITERATIONS = (50, 151)  # Random range, originally 32,64, now always 10.
+STEPS_BETWEEN_ITERATIONS = (80, 121)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
 MODE = "onehot"
@@ -322,7 +322,7 @@ def main():
     # Generating data augmentations
 
     use_augmentation = True
-    use_flips = False
+    use_flips = True
 
     if use_augmentation:
         train_in = [
@@ -473,7 +473,7 @@ def main():
 
             x = nca(x, 0.75)
 
-            if i in [n_steps-1]:
+            if i in range(n_steps): # [n_steps-1]:
                 if MODE == "rgb":
                     step_loss = ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
 
@@ -513,7 +513,7 @@ def main():
         # Compute loss (MSE on first 4 channels - RGB + alpha)
         # total_loss+= ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
 
-        loss = total_loss
+        loss = total_loss / n_steps
         # Backward pass with gradient normalization
         optim.zero_grad()
         loss.backward()
