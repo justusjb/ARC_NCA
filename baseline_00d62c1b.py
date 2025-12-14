@@ -343,6 +343,13 @@ def main():
             for k in range(4)
         ]
 
+    # remove duplicates
+    seen = set()
+    train_in, train_out = zip(*[
+        (x, y) for x, y in zip(train_in, train_out)
+        if not (x.tobytes() in seen or seen.add(x.tobytes()))
+    ])
+
     print(f"  - Training examples: {len(train_in)}")
     print(f"  - Test examples: {len(test_in)}")
     print(f"  - Training grid sizes: {[inp.shape for inp in train_in]}")
