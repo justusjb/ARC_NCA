@@ -15,6 +15,7 @@ import cv2
 import shutil
 from tqdm import tqdm
 from scipy.ndimage import zoom
+from collections import defaultdict
 
 from NCA import CA
 import arc_agi_utils as aau
@@ -447,7 +448,7 @@ def main():
     print(f"  - Learning rate: {LEARNING_RATE}")
 
     loss_log = []
-    problem_iteration_count = {}
+    problem_iteration_count = defaultdict(int)
 
     for iteration in tqdm(range(TRAINING_ITERATIONS)):
         nca.train()
