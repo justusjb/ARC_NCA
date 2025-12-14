@@ -277,7 +277,7 @@ class CA(torch.nn.Module):
     super().__init__()
     self.chn = chn
     # With 3x3, you need padding=1, with 5x5 padding=2, ...
-    self.perc = torch.nn.Conv2d(chn, 8 * chn, 7, padding=3, padding_mode="zeros", bias=False)
+    self.perc = torch.nn.Conv2d(chn, 8 * chn, 5, padding=2, padding_mode="zeros", bias=False)
     self.dropout = torch.nn.Dropout2d(p=0.4)
     self.dropout2 = torch.nn.Dropout2d(p=0.4)
     self.w1 = torch.nn.Conv2d(9*chn, hidden_n, 1)
