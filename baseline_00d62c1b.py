@@ -31,7 +31,7 @@ GENESIZE = vft.GENESIZE
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 5000
 LEARNING_RATE = 2e-3 # 5e-3 for 3x3, 1e-3 for 7x7
-STEPS_BETWEEN_ITERATIONS = (50, 501)  # Random range, originally 32,64, now always 10.
+STEPS_BETWEEN_ITERATIONS = (50, 251)  # Random range, originally 32,64, now always 10.
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
 MODE = "onehot"
