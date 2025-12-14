@@ -68,6 +68,9 @@ DAMAGE_RAMP_ITERS = 200  # Gradually increase over 1000 iterations
 
 SHOW_HIDDEN = True
 
+USE_AUGMENTATION = True
+USE_FLIPS = True
+
 
 def load_single_task(task_id):
     """Load a single ARC task by ID
@@ -321,21 +324,18 @@ def main():
 
     # Generating data augmentations
 
-    use_augmentation = True
-    use_flips = True
-
-    if use_augmentation:
+    if USE_AUGMENTATION:
         train_in = [
             np.rot90(flipped_arr, k=k).copy()
             for arr in train_in
-            for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
+            for flipped_arr in ([arr, np.flip(arr, axis=1)] if USE_FLIPS else [arr])
             for k in range(4)
         ]
 
         train_out = [
             np.rot90(flipped_arr, k=k).copy()
             for arr in train_out
-            for flipped_arr in ([arr, np.flip(arr, axis=1)] if use_flips else [arr])
+            for flipped_arr in ([arr, np.flip(arr, axis=1)] if USE_FLIPS else [arr])
             for k in range(4)
         ]
 
