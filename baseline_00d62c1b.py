@@ -438,12 +438,29 @@ def main():
     print(f"  - Learning rate: {LEARNING_RATE}")
 
     loss_log = []
+    problem_iteration_count = {}
 
     for iteration in tqdm(range(TRAINING_ITERATIONS)):
         nca.train()
 
         # Select training example (choose random problem)
         idx_problem = random.randrange(len(pool_x))
+
+        problem_iteration_count[idx_problem] += 1  # Track per-problem iterations
+
+        if POOL_QUAL:
+            if MODE == "onehot":
+                if problem_iteration_count[idx_problem] % 20 == 0:
+                    with torch.no_grad():
+                        pool_losses = ((pool_x[idx_problem][:, :11] - pool_y[idx_problem][:, :11]) ** 2).mean(dim=[1, 2, 3])
+                        worst_count = POOL_SIZE // 10
+                        worst_indices = pool_losses.topk(worst_count).indices
+
+                        for idx in worst_indices:
+                            pool_x[idx_problem][idx] = nca_in[idx_problem].clone()
+            else:
+                raise NotImplementedError("only onehot is currently supported for purging the worst 10% performers "
+                                          "every 20 pool cycles")
 
         # Get batch
         with torch.no_grad():
@@ -530,35 +547,9 @@ def main():
         optim.step()
         scheduler.step()
 
-        # Only put improvements in the pool
-        if POOL_QUAL:
-            with torch.no_grad():
-                # Clamp states
-                x_clamped = x.clone().detach()
-                x_clamped[:, :11] = torch.clamp(x_clamped[:, :11], 0, 1)
-                x_clamped[:, 11:] = torch.clamp(x_clamped[:, 11:], -5, 5)
-
-                # Quality control: only update if better
-                improved_results = x_clamped.clone()
-
-                for i in range(BATCH_SIZE):
-                    idx = idxs[i]
-                    old_state = pool_x[idx_problem][idx:idx + 1]  # [1, C, H, W]
-                    new_state = x_clamped[i:i + 1]  # [1, C, H, W]
-
-                    # Compare losses (only on visible channels)
-                    old_loss = ((old_state[:, :11] - y[i:i + 1, :11]) ** 2).mean()
-                    new_loss = ((new_state[:, :11] - y[i:i + 1, :11]) ** 2).mean()
-
-                    if new_loss >= old_loss:  # If NOT improved
-                        improved_results[i] = old_state[0]  # Keep old state
-
-                # Update pool with only improved states
-                pool_x = utils.update_problem_pool(pool_x, improved_results, idxs, idx_problem)
-        else:
-            with torch.no_grad():
-                x_clamped = torch.clamp(x.clone().detach(), -10, 10)  # Prevent explosion
-                pool_x = utils.update_problem_pool(pool_x, x_clamped, idxs, idx_problem)
+        with torch.no_grad():
+            x_clamped = torch.clamp(x.clone().detach(), -10, 10)  # Prevent explosion
+            pool_x = utils.update_problem_pool(pool_x, x_clamped, idxs, idx_problem)
 
         ema_nca.update_parameters(nca)
 
