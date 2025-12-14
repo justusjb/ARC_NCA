@@ -462,7 +462,8 @@ def main():
             if MODE == "onehot":
                 if problem_iteration_count[idx_problem] % 20 == 0:
                     with torch.no_grad():
-                        pool_losses = ((pool_x[idx_problem][:, :11] - pool_y[idx_problem][:, :11]) ** 2).mean(dim=[1, 2, 3])
+                        target = pool_y[idx_problem][:11]
+                        pool_losses = ((pool_x[idx_problem][:, :11] - target.unsqueeze(0)) ** 2).mean(dim=[1, 2, 3])
                         worst_count = POOL_SIZE // 10
                         worst_indices = pool_losses.topk(worst_count).indices
 
