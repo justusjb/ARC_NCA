@@ -31,7 +31,7 @@ GENESIZE = vft.GENESIZE
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 5000
 LEARNING_RATE = 2e-3 # 5e-3 for 3x3, 1e-3 for 7x7
-STEPS_BETWEEN_ITERATIONS = (80, 121)  # Random range, originally 32,64, now always 10.
+STEPS_BETWEEN_ITERATIONS = (32, 65)  # Random range, originally 32,64
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
 MODE = "onehot"
@@ -528,7 +528,8 @@ def main():
         scheduler.step()
 
         with torch.no_grad():
-            pool_x = utils.update_problem_pool(pool_x, x.clone().detach(), idxs, idx_problem)
+            x_clamped = torch.clamp(x.clone().detach(), -10, 10)  # Prevent explosion
+            pool_x = utils.update_problem_pool(pool_x, x_clamped, idxs, idx_problem)
 
         ema_nca.update_parameters(nca)
 
