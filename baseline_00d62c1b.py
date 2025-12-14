@@ -73,7 +73,7 @@ SHOW_HIDDEN = True
 USE_AUGMENTATION = True
 USE_FLIPS = True
 
-RESTART_SCHEDULE = False
+RESTART_SCHEDULE = True
 POOL_QUAL = True
 
 def load_single_task(task_id):
@@ -433,7 +433,7 @@ def main():
     optim = torch.optim.AdamW(nca.parameters(), lr=LEARNING_RATE)
     if RESTART_SCHEDULE:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-            optim, T_0=1000, T_mult=1, eta_min=LEARNING_RATE*0.1
+            optim, T_0=1000, T_mult=2, eta_min=LEARNING_RATE*0.1
         )
     else:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
