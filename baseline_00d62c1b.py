@@ -526,7 +526,7 @@ def main():
                     model_only_loss = step_loss
                     if DECORRELATION:
                         if y.shape[1] > 11:  # Has hidden channels
-                            hidden = y[:, 11:, :, :]  # [B, num_hidden, H, W]
+                            hidden = x[:, 11:, :, :]  # [B, num_hidden, H, W]
 
                             channel_means = hidden.mean(dim=[2, 3])  # [B, C]
                             mean_variance = channel_means.var(dim=1).mean()
