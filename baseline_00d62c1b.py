@@ -333,25 +333,35 @@ def compute_decorr_loss(model):
 
     return max_cos.mean()
 
+
 class PIDLossWeighting:
-    def __init__(self, target_value=0.1, Kp=1.0, Ki=0.01, Kd=0.1):
+    def __init__(self, target_value=0.25, Kp=5.0, Ki=0.05, Kd=0.1, max_integral=10.0):
         self.target = target_value
-        self.Kp = Kp  # Proportional gain
-        self.Ki = Ki  # Integral gain
-        self.Kd = Kd  # Derivative gain
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
         self.integral = 0
         self.prev_error = 0
         self.weight = 1.0
+        self.max_integral = max_integral # Prevent windup
 
     def update(self, current_loss):
         error = current_loss - self.target
+
+        # Limit integral windup
         self.integral += error
+        self.integral = torch.clamp(self.integral, -self.max_integral, self.max_integral)
+
         derivative = error - self.prev_error
 
         # PID formula
-        adjustment = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
-        self.weight = max(0, self.weight - adjustment)  # Ensure non-negative
+        adjustment = (self.Kp * error +
+                      self.Ki * self.integral +
+                      self.Kd * derivative)
+
+        self.weight = max(0.01, self.weight * 0.99 + 0.01 * adjustment)
         self.prev_error = error
+
         return self.weight
 
 
