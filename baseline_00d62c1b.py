@@ -583,7 +583,6 @@ def main():
                         if y.shape[1] > 11:  # Has hidden channels
 
                             decorr_loss = compute_decorr_loss(nca)
-                            weight = pid_controller.update(decorr_loss.item())
 
                             # Only start applying after 10-20% of training (let basic features form first)
                             if iteration > 0.15 * TRAINING_ITERATIONS:
