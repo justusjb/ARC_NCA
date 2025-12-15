@@ -335,30 +335,30 @@ def compute_decorr_loss(model):
 
 
 class PIDLossWeighting:
-    def __init__(self, target_value=0.25, Kp=5.0, Ki=0.05, Kd=0.1, max_integral=5.0):
-        self.target = target_value
-        self.Kp = Kp
-        self.Ki = Ki
-        self.Kd = Kd
-        self.integral = 0.0  # float
-        self.prev_error = 0.0
-        self.weight = 1.0
+    def __init__(self, target=0.20, max_integral=2.0):
+        self.target = target
         self.max_integral = max_integral
+        self.integral = 0.0
+        self.prev_error = 0.0
+        self.weight = 0.1  # Start LOW
 
     def update(self, current_loss):
         error = current_loss - self.target
 
-        # FIXED: Use Python min/max for float
-        self.integral += error
+        # CONSERVATIVE GAINS - precise control
+        Kp = 2.0  # Gentle proportional
+        Ki = 0.02  # Slow integral buildup
+        Kd = 0.2  # Moderate derivative
+
+        self.integral += error * 0.5  # SLOWER integral accumulation
         self.integral = max(-self.max_integral, min(self.integral, self.max_integral))
 
         derivative = error - self.prev_error
 
-        adjustment = (self.Kp * error +
-                      self.Ki * self.integral +
-                      self.Kd * derivative)
+        adjustment = Kp * error + Ki * self.integral + Kd * derivative
 
-        self.weight = max(0.01, self.weight * 0.99 + 0.01 * adjustment)
+        # ULTRA-SMOOTH weight update
+        self.weight = max(0.01, self.weight * 0.995 + 0.005 * adjustment)
         self.prev_error = error
 
         return self.weight
@@ -495,7 +495,9 @@ def main():
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
-    pid_controller = PIDLossWeighting(target_value=0.2, Kp=5.0, Ki=0.05, Kd=0.1)
+    pid_controller = PIDLossWeighting(target=0.2)
+    pid_activation_start = 1500
+    pid_activation_iters = 1000
 
     # Training
     print("\n[5/6] Training...")
@@ -584,9 +586,9 @@ def main():
 
                             decorr_loss = compute_decorr_loss(nca)
 
-                            # Only start applying after 10-20% of training (let basic features form first)
-                            if iteration > 0.15 * TRAINING_ITERATIONS:
-                                decorr_weight = pid_controller.update(decorr_loss.item())
+                            if iteration > pid_activation_start:
+                                alpha = min(1.0, (iteration - pid_activation_start) / pid_activation_iters)
+                                decorr_weight = pid_controller.update(decorr_loss.item()) * alpha
                             else:
                                 decorr_weight = 0.0
 
