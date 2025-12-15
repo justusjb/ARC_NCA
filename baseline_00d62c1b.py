@@ -16,6 +16,7 @@ import shutil
 from tqdm import tqdm
 from scipy.ndimage import zoom
 from collections import defaultdict
+import torch.nn.functional as F
 
 from NCA import CA
 import arc_agi_utils as aau
@@ -319,6 +320,20 @@ def make_circle_masks(n, h, w, device):
     return damage_mask  # [n, h, w]
 
 
+def compute_decorr_loss(model):
+    # Decorrelate w1's 200 output channels
+    W = model.w1.weight  # [200, 180, 1, 1]
+    W_flat = W.view(W.size(0), -1)  # [200, 180]
+    W_norm = F.normalize(W_flat, p=2, dim=1)
+    cos_sim = torch.matmul(W_norm, W_norm.t())  # [200, 200]
+
+    n = cos_sim.size(0)
+    mask = ~torch.eye(n, dtype=torch.bool, device=cos_sim.device)
+    max_cos = cos_sim.masked_fill(~mask, -1).max(dim=1)[0]
+
+    return max_cos.mean()
+
+
 def main():
     print("="*60)
     print(f"Baseline NCA Training on Task {TASK_ID}")
@@ -526,25 +541,8 @@ def main():
                     model_only_loss = step_loss
                     if DECORRELATION:
                         if y.shape[1] > 11:  # Has hidden channels
-                            hidden = x[:, 11:, :, :]  # [B, num_hidden, H, W]
 
-                            channel_means = hidden.mean(dim=[2, 3])  # [B, C]
-                            mean_variance = channel_means.var(dim=1).mean()
-
-                            # Flatten spatial dimensions
-                            b, c, h_, w_ = hidden.shape
-                            hidden_flat = hidden.reshape(b, c, h_ * w_)  # [B, C, H*W]
-
-                            # Compute correlation between channels (for first batch item)
-                            hidden_normalized = (hidden_flat[0] - hidden_flat[0].mean(dim=1, keepdim=True))
-                            hidden_normalized = hidden_normalized / (hidden_normalized.std(dim=1, keepdim=True) + 1e-8)
-
-                            correlation = torch.matmul(hidden_normalized, hidden_normalized.T) / (h_ * w_)  # [C, C]
-
-                            # Penalize off-diagonal correlations (want low correlation between different channels)
-                            identity = torch.eye(c, device=y.device)
-                            decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
-
+                            decorr_loss = compute_decorr_loss(nca)
 
                             if DECORR_SCHED:
                                 if iteration < 2000:
@@ -560,7 +558,7 @@ def main():
                             else:
                                 decorr_weight = 0 # 0.001  # static decorr weight
 
-                            step_loss = step_loss + decorr_weight * decorr_loss - 0.0 * mean_variance
+                            step_loss = step_loss + decorr_weight * decorr_loss
 
                             total_model_only_loss = total_model_only_loss + model_only_loss
                             total_decorr_only_loss = total_decorr_only_loss + decorr_loss
