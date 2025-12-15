@@ -65,7 +65,7 @@ ARC_COLOR_MAP_NP = np.array([
 ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 
 DECORRELATION = True
-DECORR_SCHED = False
+# DECORR_SCHED = False # always on as of now
 
 DAMAGE = False
 DAMAGE_START_ITER = 200  # Start damage after 1000 iterations
@@ -333,6 +333,27 @@ def compute_decorr_loss(model):
 
     return max_cos.mean()
 
+class PIDLossWeighting:
+    def __init__(self, target_value=0.1, Kp=1.0, Ki=0.01, Kd=0.1):
+        self.target = target_value
+        self.Kp = Kp  # Proportional gain
+        self.Ki = Ki  # Integral gain
+        self.Kd = Kd  # Derivative gain
+        self.integral = 0
+        self.prev_error = 0
+        self.weight = 1.0
+
+    def update(self, current_loss):
+        error = current_loss - self.target
+        self.integral += error
+        derivative = error - self.prev_error
+
+        # PID formula
+        adjustment = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
+        self.weight = max(0, self.weight - adjustment)  # Ensure non-negative
+        self.prev_error = error
+        return self.weight
+
 
 def main():
     print("="*60)
@@ -457,6 +478,8 @@ def main():
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
+    pid_controller = PIDLossWeighting(target_value=0.2, Kp=0.5, Ki=0.01, Kd=0.05)
+
     # Training
     print("\n[5/6] Training...")
     print(f"  - Iterations: {TRAINING_ITERATIONS}")
@@ -543,20 +566,13 @@ def main():
                         if y.shape[1] > 11:  # Has hidden channels
 
                             decorr_loss = compute_decorr_loss(nca)
+                            weight = pid_controller.update(decorr_loss.item())
 
-                            if DECORR_SCHED:
-                                if iteration < 2000:
-                                    decorr_weight = 10.0  # Establish diverse features
-                                elif iteration < 4000:
-                                    # Linear decay: 10 → 1 over 2000 iterations
-                                    progress = (iteration - 2000) / 2000
-                                    decorr_weight = 10.0 - (9.0 * progress)  # 10 → 1
-                                else:
-                                    # Final refinement: 1 → 0 over 1000 iterations
-                                    progress = (iteration - 4000) / 1000
-                                    decorr_weight = 1.0 - progress  # 1 → 0
+                            # Only start applying after 10-20% of training (let basic features form first)
+                            if iteration > 0.15 * TRAINING_ITERATIONS:
+                                decorr_weight = pid_controller.update(decorr_loss.item())
                             else:
-                                decorr_weight = 0 # 0.001  # static decorr weight
+                                decorr_weight = 0.0
 
                             step_loss = step_loss + decorr_weight * decorr_loss
 
