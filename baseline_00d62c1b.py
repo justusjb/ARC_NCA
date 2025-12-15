@@ -474,7 +474,15 @@ def main():
             optim, T_0=1000, T_mult=2, eta_min=LEARNING_RATE*0.1
         )
     else:
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
+        # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
+
+        warmup_iters = int(0.2 * TRAINING_ITERATIONS)  # 20% warmup
+        main_iters = TRAINING_ITERATIONS - warmup_iters
+
+        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optim, start_factor=0.01, end_factor=1.0, total_iters=warmup_iters)
+        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=main_iters, eta_min=1e-6)
+
+        scheduler = torch.optim.lr_scheduler.SequentialLR(optim, [warmup_scheduler, cosine_scheduler], milestones=[warmup_iters])
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
