@@ -73,7 +73,7 @@ SHOW_HIDDEN = True
 USE_AUGMENTATION = True
 USE_FLIPS = True
 
-RESTART_SCHEDULE = True
+RESTART_SCHEDULE = False
 POOL_QUAL = True
 
 def load_single_task(task_id):
