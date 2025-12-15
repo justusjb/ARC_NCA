@@ -31,7 +31,7 @@ def get_batch(pool, x_prime, batch_size, noise_level = 0.0):
             batch[:, chn // 2:, ...]) * m1[:,chn//2:,...].float()
 
     # Previously, only first item in batch was reset to seed like this: batch[0:1, :, :, :] = x_prime
-    n_to_reseed = 1
+    n_to_reseed = 2
     batch[0:n_to_reseed, :, :, :] = x_prime.unsqueeze(0).repeat(n_to_reseed, 1, 1, 1)
     
     return batch, idxs
