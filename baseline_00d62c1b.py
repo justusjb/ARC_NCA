@@ -558,7 +558,7 @@ def main():
                                     progress = (iteration - 4000) / 1000
                                     decorr_weight = 1.0 - progress  # 1 → 0
                             else:
-                                decorr_weight = 0.02  # static decorr weight
+                                decorr_weight = 0.001  # static decorr weight
 
                             step_loss = step_loss + decorr_weight * decorr_loss - 0.0 * mean_variance
 
