@@ -64,6 +64,8 @@ ARC_COLOR_MAP_NP = np.array([
 ARC_COLOR_MAP_TORCH = torch.from_numpy(ARC_COLOR_MAP_NP)
 
 DECORRELATION = True
+DECORR_SCHED = False
+
 DAMAGE = False
 DAMAGE_START_ITER = 200  # Start damage after 1000 iterations
 DAMAGE_RAMP_ITERS = 200  # Gradually increase over 1000 iterations
@@ -447,6 +449,10 @@ def main():
     print(f"  - Learning rate: {LEARNING_RATE}")
 
     loss_log = []
+    if DECORRELATION:
+        model_only_loss_log = []
+        decorrelation_loss_log = []
+
     problem_iteration_count = defaultdict(int)
 
     for iteration in tqdm(range(TRAINING_ITERATIONS)):
@@ -487,6 +493,8 @@ def main():
         n_steps = random.randrange(*STEPS_BETWEEN_ITERATIONS)
 
         total_loss=0
+        total_model_only_loss=0
+        total_decorr_only_loss=0
 
         if DAMAGE:
             damage_step = -1
@@ -515,6 +523,7 @@ def main():
 
                 elif MODE == "onehot":
                     step_loss = ((y[:, :11, :, :]) - (x[:, :11, :, :])).pow(2).mean()
+                    model_only_loss = step_loss
                     if DECORRELATION:
                         if y.shape[1] > 11:  # Has hidden channels
                             hidden = y[:, 11:, :, :]  # [B, num_hidden, H, W]
@@ -536,26 +545,32 @@ def main():
                             identity = torch.eye(c, device=y.device)
                             decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
 
-                            # decorr_weight = 10 # static decorr weight was used earlier
 
-                            if iteration < 2000:
-                                decorr_weight = 10.0  # Establish diverse features
-                            elif iteration < 4000:
-                                # Linear decay: 10 → 1 over 2000 iterations
-                                progress = (iteration - 2000) / 2000
-                                decorr_weight = 10.0 - (9.0 * progress)  # 10 → 1
+                            if DECORR_SCHED:
+                                if iteration < 2000:
+                                    decorr_weight = 10.0  # Establish diverse features
+                                elif iteration < 4000:
+                                    # Linear decay: 10 → 1 over 2000 iterations
+                                    progress = (iteration - 2000) / 2000
+                                    decorr_weight = 10.0 - (9.0 * progress)  # 10 → 1
+                                else:
+                                    # Final refinement: 1 → 0 over 1000 iterations
+                                    progress = (iteration - 4000) / 1000
+                                    decorr_weight = 1.0 - progress  # 1 → 0
                             else:
-                                # Final refinement: 1 → 0 over 1000 iterations
-                                progress = (iteration - 4000) / 1000
-                                decorr_weight = 1.0 - progress  # 1 → 0
+                                decorr_weight = 10  # static decorr weight
 
                             step_loss = step_loss + decorr_weight * decorr_loss - 0.0 * mean_variance
+
+                            total_model_only_loss = total_model_only_loss + model_only_loss
+                            total_decorr_only_loss = total_decorr_only_loss + decorr_loss
                         else:
                             raise AssertionError("Decorrelation enabled but no hidden channels found")
 
                 else:
                     raise NotImplementedError("Only rgb and onehot are supported")
                 total_loss = total_loss + step_loss
+
 
         # Compute loss (MSE on first 4 channels - RGB + alpha)
         # total_loss+= ((y[:, :4, :, :]) - (x[:, :4, :, :])).pow(2).mean()
@@ -574,11 +589,15 @@ def main():
 
         ema_nca.update_parameters(nca)
 
+
         loss_log.append(loss.item())
+        if DECORRELATION:
+            model_only_loss_log.append(total_model_only_loss)
+            decorrelation_loss_log.append(total_decorr_only_loss)
 
         # Print progress every 100 iterations
         if iteration % 100 == 0:
-            print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f}")
+            print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f} | model loss: {model_only_loss if 'model_only_loss' in locals() else 'N/A' :.6} | decorr loss: {decorr_loss if 'decorr_loss' in locals() else 'N/A':.6}")
             ema_nca.eval()
             with torch.no_grad():
 
@@ -694,7 +713,10 @@ def main():
 
     # Plot training curves
     print("\n[8/8] Plotting results...")
-    fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+    if DECORRELATION:
+        fig, (ax, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 18))
+    else:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 5))
 
     ax.plot(loss_log, alpha=0.3, color='blue')
     ax.plot(np.convolve(loss_log, np.ones(50)/50, mode='valid'),
@@ -704,6 +726,23 @@ def main():
     ax.set_title('Training Loss')
     ax.legend()
     ax.grid(True, alpha=0.3)
+
+    if DECORRELATION:
+        ax2.plot(loss_log, alpha=0.3, color='blue')
+        ax2.plot(np.convolve(model_only_loss_log, np.ones(50)/50, mode='valid'),)
+        ax2.set_xlabel('Iteration')
+        ax2.set_ylabel('Loss')
+        ax2.set_title('Model Only Loss')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        ax3.plot(loss_log, alpha=0.3, color='blue')
+        ax3.plot(np.convolve(decorrelation_loss_log, np.ones(50)/50, mode='valid'),)
+        ax3.set_xlabel('Iteration')
+        ax3.set_ylabel('Loss')
+        ax3.set_title('Decorrelation Loss')
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
 
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / "training_curves.png", dpi=150, bbox_inches='tight')
