@@ -592,8 +592,8 @@ def main():
 
         loss_log.append(loss.item())
         if DECORRELATION:
-            model_only_loss_log.append(total_model_only_loss)
-            decorrelation_loss_log.append(total_decorr_only_loss)
+            model_only_loss_log.append(total_model_only_loss.item())
+            decorrelation_loss_log.append(total_decorr_only_loss.item())
 
         # Print progress every 100 iterations
         if iteration % 100 == 0:
@@ -728,7 +728,7 @@ def main():
     ax.grid(True, alpha=0.3)
 
     if DECORRELATION:
-        ax2.plot(loss_log, alpha=0.3, color='blue')
+        ax2.plot(model_only_loss_log, alpha=0.3, color='blue')
         ax2.plot(np.convolve(model_only_loss_log, np.ones(50)/50, mode='valid'),)
         ax2.set_xlabel('Iteration')
         ax2.set_ylabel('Loss')
@@ -736,7 +736,7 @@ def main():
         ax2.legend()
         ax2.grid(True, alpha=0.3)
 
-        ax3.plot(loss_log, alpha=0.3, color='blue')
+        ax3.plot(decorrelation_loss_log, alpha=0.3, color='blue')
         ax3.plot(np.convolve(decorrelation_loss_log, np.ones(50)/50, mode='valid'),)
         ax3.set_xlabel('Iteration')
         ax3.set_ylabel('Loss')
