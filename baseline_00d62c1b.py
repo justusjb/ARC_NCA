@@ -536,7 +536,18 @@ def main():
                             identity = torch.eye(c, device=y.device)
                             decorr_loss = ((correlation - identity) ** 2).sum() / (c * (c - 1))  # Exclude diagonal
 
-                            decorr_weight = 10
+                            # decorr_weight = 10 # static decorr weight was used earlier
+
+                            if iteration < 2000:
+                                decorr_weight = 10.0  # Establish diverse features
+                            elif iteration < 4000:
+                                # Linear decay: 10 → 1 over 2000 iterations
+                                progress = (iteration - 2000) / 2000
+                                decorr_weight = 10.0 - (9.0 * progress)  # 10 → 1
+                            else:
+                                # Final refinement: 1 → 0 over 1000 iterations
+                                progress = (iteration - 4000) / 1000
+                                decorr_weight = 1.0 - progress  # 1 → 0
 
                             step_loss = step_loss + decorr_weight * decorr_loss - 0.0 * mean_variance
                         else:
@@ -643,13 +654,13 @@ def main():
         test_x = test_nca_in[0].unsqueeze(0).clone().to(DEVICE)
 
         # Run NCA
-        for i in range(EVAL_STEPS+1000):
+        for i in range(EVAL_STEPS+5000):
             test_x = ema_nca.module(test_x, 0.5)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE,
                         show_hidden=SHOW_HIDDEN, hidden_cols=3)
 
-        make_video(path_video, EVAL_STEPS+1000, 10,
+        make_video(path_video, EVAL_STEPS+5000, 10,
                    type(nca).__name__ + "problem_" + str(TASK_ID) + "padded", show_hidden=SHOW_HIDDEN)
 
         # Convert to viewable image
