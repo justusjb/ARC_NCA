@@ -486,7 +486,7 @@ def main():
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
-    pid_controller = PIDLossWeighting(target_value=0.2, Kp=0.5, Ki=0.01, Kd=0.05)
+    pid_controller = PIDLossWeighting(target_value=0.2, Kp=5.0, Ki=0.05, Kd=0.1)
 
     # Training
     print("\n[5/6] Training...")
@@ -620,6 +620,11 @@ def main():
         # Print progress every 100 iterations
         if iteration % 100 == 0:
             print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f} | model loss: {model_only_loss if 'model_only_loss' in locals() else 'N/A' :.6} | decorr loss: {decorr_loss if 'decorr_loss' in locals() else 'N/A':.6}")
+
+            if DECORRELATION:
+                print(f"Iter {iter}: decorr={decorr_loss:.3f}, weight={decorr_weight:.3f}, "
+                      f"error={decorr_loss - pid_controller.target:.3f}, "
+                      f"integral={pid_controller.integral:.3f}")
             ema_nca.eval()
             with torch.no_grad():
 
