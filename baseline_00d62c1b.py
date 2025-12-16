@@ -497,7 +497,7 @@ def main():
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
-    constraint_module = LagrangeConstraint(target=0.25)
+    constraint_module = LagrangeConstraint(target=0.37)
     lambda_optimizer = torch.optim.SGD([constraint_module.log_lambda], lr=0.01)
 
     # Training
@@ -715,7 +715,7 @@ def main():
 
         # Run NCA
         for i in range(EVAL_STEPS+5000):
-            test_x = ema_nca.module(test_x, 0.5)
+            test_x = ema_nca.module(test_x, 0.75)
             x = test_x.detach()
             write_frame(x, path_video, i, 10 * x.shape[3], 10 * x.shape[2], CHANNELS, mode=MODE,
                         show_hidden=SHOW_HIDDEN, hidden_cols=3)
