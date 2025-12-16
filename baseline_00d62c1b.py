@@ -335,7 +335,7 @@ def compute_decorr_loss(model):
 
 
 class LagrangeConstraint(torch.nn.Module):
-    def __init__(self, target=0.2):
+    def __init__(self, target=0.3):
         super().__init__()
         self.target = target
         # Start at reasonable scale
