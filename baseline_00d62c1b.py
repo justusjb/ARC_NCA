@@ -321,17 +321,35 @@ def make_circle_masks(n, h, w, device):
 
 
 def compute_decorr_loss(model):
-    # Decorrelate w1's 200 output channels
-    W = model.w1.weight  # [200, 180, 1, 1]
-    W_flat = W.view(W.size(0), -1)  # [200, 180]
-    W_norm = F.normalize(W_flat, p=2, dim=1)
-    cos_sim = torch.matmul(W_norm, W_norm.t())  # [200, 200]
+    total_decorr = 0
+    num_layers = 0
 
-    n = cos_sim.size(0)
-    mask = ~torch.eye(n, dtype=torch.bool, device=cos_sim.device)
-    max_cos = cos_sim.masked_fill(~mask, -1).max(dim=1)[0]
+    channels_num = 11 if MODE == 'onehot' else 4
 
-    return max_cos.mean()
+    # 1. Decorrelate w1's 200 INTERNAL features (most important!)
+    W1 = model.w1.weight  # [200, 180, 1, 1]
+    W1_flat = W1.view(W1.size(0), -1)  # [200, 180]
+    W1_norm = F.normalize(W1_flat, p=2, dim=1)
+    cos_sim_w1 = torch.matmul(W1_norm, W1_norm.t())  # [200, 200]
+
+    mask1 = ~torch.eye(vft.GENE_HIDDEN_N+vft.GENE_PROP_HIDDEN_N, dtype=torch.bool, device=cos_sim_w1.device)
+    max_cos_w1 = cos_sim_w1.masked_fill(~mask1, -1).max(dim=1)[0]
+    total_decorr += max_cos_w1.mean()
+    num_layers += 1
+
+    # 2. Decorrelate w2's 21 HIDDEN output channels (what you have now)
+    W2_hidden = model.w2.weight[channels_num:vft.CHANNELS, :, :, :]  # [21, 200, 1, 1]
+    W2_flat = W2_hidden.view(W2_hidden.size(0), -1)  # [21, 200]
+    W2_norm = F.normalize(W2_flat, p=2, dim=1)
+    cos_sim_w2 = torch.matmul(W2_norm, W2_norm.t())  # [21, 21]
+
+    mask2 = ~torch.eye(vft.CHANNELS-channels_num, dtype=torch.bool, device=cos_sim_w2.device)
+    max_cos_w2 = cos_sim_w2.masked_fill(~mask2, -1).max(dim=1)[0]
+    total_decorr += max_cos_w2.mean()
+    num_layers += 1
+
+    # Average both layers
+    return total_decorr / num_layers
 
 
 class LagrangeConstraint(torch.nn.Module):
