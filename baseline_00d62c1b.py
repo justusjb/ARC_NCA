@@ -334,35 +334,19 @@ def compute_decorr_loss(model):
     return max_cos.mean()
 
 
-class PIDLossWeighting:
-    def __init__(self, target=0.20, max_integral=2.0):
+class LagrangeConstraint(torch.nn.Module):
+    def __init__(self, target=0.2):
+        super().__init__()
         self.target = target
-        self.max_integral = max_integral
-        self.integral = 0.0
-        self.prev_error = 0.0
-        self.weight = 0.1  # Start LOW
+        # Start at reasonable scale
+        self.log_lambda = torch.nn.Parameter(torch.tensor(1.0))
 
-    def update(self, current_loss):
-        error = current_loss - self.target
+    def forward(self, main_loss, decorr_loss):
+        # Constraint violation
+        violation = torch.abs(decorr_loss - self.target)
+        penalty = torch.exp(self.log_lambda)
 
-        # CONSERVATIVE GAINS - precise control
-        Kp = 2.0  # Gentle proportional
-        Ki = 0.02  # Slow integral buildup
-        Kd = 0.2  # Moderate derivative
-
-        self.integral += error * 0.5  # SLOWER integral accumulation
-        self.integral = max(-self.max_integral, min(self.integral, self.max_integral))
-
-        derivative = error - self.prev_error
-
-        adjustment = Kp * error + Ki * self.integral + Kd * derivative
-
-        # ULTRA-SMOOTH weight update
-        self.weight = max(0.01, self.weight * 0.995 + 0.005 * adjustment)
-        self.prev_error = error
-
-        return self.weight
-
+        return main_loss + penalty * violation
 
 def main():
     print("="*60)
@@ -495,9 +479,8 @@ def main():
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
-    pid_controller = PIDLossWeighting(target=0.2)
-    pid_activation_start = 1500
-    pid_activation_iters = 1000
+    constraint_module = LagrangeConstraint(target=0.2)
+    lambda_optimizer = torch.optim.SGD([constraint_module.log_lambda], lr=0.01)
 
     # Training
     print("\n[5/6] Training...")
@@ -586,13 +569,12 @@ def main():
 
                             decorr_loss = compute_decorr_loss(nca)
 
-                            if iteration > pid_activation_start:
-                                alpha = min(1.0, (iteration - pid_activation_start) / pid_activation_iters)
-                                decorr_weight = pid_controller.update(decorr_loss.item()) * alpha
+                            if iteration > 1500:  # Gradual activation
+                                step_loss = constraint_module(step_loss, decorr_loss)
                             else:
-                                decorr_weight = 0.0
+                                current_lambda = 0
 
-                            step_loss = step_loss + decorr_weight * decorr_loss
+                            # step_loss = step_loss + decorr_weight * decorr_loss
 
                             total_model_only_loss = total_model_only_loss + model_only_loss
                             total_decorr_only_loss = total_decorr_only_loss + decorr_loss
@@ -615,12 +597,14 @@ def main():
         optim.step()
         scheduler.step()
 
+        lambda_optimizer.step()
+        lambda_optimizer.zero_grad()
+
         with torch.no_grad():
             x_clamped = torch.clamp(x.clone().detach(), -10, 10)  # Prevent explosion
             pool_x = utils.update_problem_pool(pool_x, x_clamped, idxs, idx_problem)
 
         ema_nca.update_parameters(nca)
-
 
         loss_log.append(loss.item())
         if DECORRELATION:
@@ -632,9 +616,14 @@ def main():
             print(f"  Iter {iteration:4d} | Train Loss: {loss.item():.6f} | model loss: {model_only_loss if 'model_only_loss' in locals() else 'N/A' :.6} | decorr loss: {decorr_loss if 'decorr_loss' in locals() else 'N/A':.6}")
 
             if DECORRELATION:
-                print(f"Iter {iter}: decorr={decorr_loss:.3f}, weight={decorr_weight:.3f}, "
-                      f"error={decorr_loss - pid_controller.target:.3f}, "
-                      f"integral={pid_controller.integral:.3f}")
+                lambda_val = torch.exp(constraint_module.log_lambda).item()
+                violation = abs(decorr_loss.item() - constraint_module.target)
+                decorr_contrib = lambda_val * violation
+                print(f"decorr: {decorr_loss:.3f} | "
+                      f"λ: {lambda_val:.2f} | "
+                      f"violation: {violation:.3f} | "
+                      f"decorr_contrib: {decorr_contrib:.4f}")
+
             ema_nca.eval()
             with torch.no_grad():
 
