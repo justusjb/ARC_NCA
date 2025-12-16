@@ -569,10 +569,7 @@ def main():
 
                             decorr_loss = compute_decorr_loss(nca)
 
-                            if iteration > 1500:  # Gradual activation
-                                step_loss = constraint_module(step_loss, decorr_loss)
-                            else:
-                                current_lambda = 0
+                            step_loss = constraint_module(step_loss, decorr_loss)
 
                             # step_loss = step_loss + decorr_weight * decorr_loss
 
