@@ -1,6 +1,6 @@
 import torch
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-CHANNELS = 20
+CHANNELS = 32
 BATCH_SIZE = 16
 MASKING = 0
 GENESIZE = 0 # set to 0 for non-Engram or weird issues may occur
