@@ -335,7 +335,7 @@ def compute_decorr_loss(model):
 
 
 class LagrangeConstraint(torch.nn.Module):
-    def __init__(self, target=0.3):
+    def __init__(self, target=0.2):
         super().__init__()
         self.target = target
         # Start at reasonable scale
@@ -479,7 +479,7 @@ def main():
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
-    constraint_module = LagrangeConstraint(target=0.2)
+    constraint_module = LagrangeConstraint(target=0.3)
     lambda_optimizer = torch.optim.SGD([constraint_module.log_lambda], lr=0.01)
 
     # Training
