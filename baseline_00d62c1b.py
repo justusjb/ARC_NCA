@@ -32,7 +32,7 @@ GENESIZE = vft.GENESIZE
 # Task-specific settings
 TASK_ID = "00d62c1b"
 TRAINING_ITERATIONS = 5000
-LEARNING_RATE = 2e-3 # 5e-3 for 3x3, 1e-3 for 7x7
+LEARNING_RATE = 5e-3 # 5e-3 for 3x3, 1e-3 for 7x7
 STEPS_BETWEEN_ITERATIONS = (32, 65)  # Random range, originally 32,64
 # Curiously, this originally always made 64 steps at eval but at most 63 when training
 EVAL_STEPS = STEPS_BETWEEN_ITERATIONS[1] - 1
@@ -491,7 +491,7 @@ def main():
         main_iters = TRAINING_ITERATIONS - warmup_iters
 
         # warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optim, start_factor=0.01, end_factor=1.0, total_iters=warmup_iters)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=1e-5)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=TRAINING_ITERATIONS, eta_min=2e-5)
 
         # torch.optim.lr_scheduler.SequentialLR(optim, [warmup_scheduler, cosine_scheduler], milestones=[warmup_iters])
 
