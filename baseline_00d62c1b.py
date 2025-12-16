@@ -497,7 +497,7 @@ def main():
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
-    constraint_module = LagrangeConstraint(target=0.17)
+    constraint_module = LagrangeConstraint(target=0.35)
     lambda_optimizer = torch.optim.SGD([constraint_module.log_lambda], lr=0.01)
 
     # Training
