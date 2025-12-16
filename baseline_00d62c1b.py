@@ -493,7 +493,7 @@ def main():
         warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optim, start_factor=0.01, end_factor=1.0, total_iters=warmup_iters)
         cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=main_iters, eta_min=1e-6)
 
-        scheduler = torch.optim.lr_scheduler.SequentialLR(optim, [warmup_scheduler, cosine_scheduler], milestones=[warmup_iters])
+        scheduler = cosine_scheduler # torch.optim.lr_scheduler.SequentialLR(optim, [warmup_scheduler, cosine_scheduler], milestones=[warmup_iters])
 
     ema_nca = torch.optim.swa_utils.AveragedModel(nca, multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(0.999))
 
